@@ -2,6 +2,7 @@ package de.donotconnect.notary_cache.operator.NotaryImpl;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.KeyManagementException;
@@ -42,6 +43,7 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	private final static Logger log = LogManager.getLogger("DefaultNotary");
 	private final ScheduledExecutorService scheduler = Executors
 			.newScheduledThreadPool(1);
+	private ArrayList<InetAddress> scheduledHosts = new ArrayList<InetAddress>();
 
 	public DefaultNotary() {
 		e = EventMgr.getInstance();
@@ -172,6 +174,9 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 
 			return extract.getDigests();
 
+		} catch (ConnectException e) {
+			log.debug("Can't connect to " + host + ": " + e);
+			return null;
 		} catch (NoSuchAlgorithmException | KeyManagementException
 				| IOException e) {
 			// TODO Auto-generated catch block
@@ -190,9 +195,9 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	@Override
 	public void handleRequest(String target, Request baseRequest,
 			HttpServletRequest req, HttpServletResponse resp, ICacheStrategy cs) {
-		
+
 		try {
-			
+
 			resp.setContentType("text/plain; charset=utf-8");
 			PrintWriter out = resp.getWriter();
 
@@ -219,7 +224,7 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 					ip = InetAddress.getByName(hostname).getHostAddress();
 				}
 			}
-			
+
 			DefaultEntry entry = cs.getEntry(new DefaultEntry(InetAddress
 					.getByName(ip).getAddress(), port, hostname, keyalgo));
 
@@ -227,8 +232,8 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 			// 404
 			if (entry == null) {
 				// Issue Event to evaluate
-				e.newEvent("new-request " + ip + " " + port
-						+ " " + hostname + " " + keyalgo);
+				e.newEvent("new-request " + ip + " " + port + " " + hostname
+						+ " " + keyalgo);
 				resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
 				out.print(_SC_REQUEST_SCHEDULED_);
 				return;
@@ -265,7 +270,7 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 					int port = Integer.parseInt(args[2]);
 
 					this.setTargetHost(new DefaultEntry(ip.getAddress(), port,
-							args[3], args[4]));
+							args[3], args[4])); // sets this.host
 
 					String[] digests = this.getDigestsFromTargetHost();
 
@@ -274,23 +279,36 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 					if (digests == null
 							&& !(args.length == 6 && args[5].equals("false"))) {
 						log.debug("Notary didn't return a result for " + ip
-								+ "/" + args[3] + ":" + port
-								+ ". Trying again in 8 hours.");
-						final String eventcode;
-						if (evnt.endsWith("true")) {
-							eventcode = evnt.substring(0, evnt.length() - 6);
-						} else {
-							eventcode = evnt;
-						}
-
-						final Runnable scheduledRequest = new Runnable() {
-							public void run() {
-								EventMgr e = EventMgr.getInstance();
-								e.newEvent(eventcode + " false");
+								+ "/" + args[3] + ":" + port);
+						if (!this.scheduledHosts.contains(this.host)) {
+							log.debug("Scheduling host evaluation.");
+							final String eventcode;
+							if (evnt.endsWith("true")) {
+								eventcode = evnt
+										.substring(0, evnt.length() - 6);
+							} else {
+								eventcode = evnt;
 							}
-						};
-						scheduler.schedule(scheduledRequest, 8, TimeUnit.HOURS);
+
+							this.scheduledHosts.add(this.host);
+
+							final Runnable scheduledRequest = new Runnable() {
+								public void run() {
+									EventMgr e = EventMgr.getInstance();
+									e.newEvent(eventcode + " false");
+								}
+							};
+							scheduler.schedule(scheduledRequest, 1,
+									TimeUnit.MINUTES);
+
+						} else {
+							log.debug("Host evaluation already scheduled.");
+						}
 						return;
+					}
+					if (this.scheduledHosts.contains(this.host)) {
+						log.debug("Removing "+this.host+" from scheduler");
+						this.scheduledHosts.remove(this.host);
 					}
 
 					StringBuffer sb = new StringBuffer();
