@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SNIServerName;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
@@ -174,7 +175,9 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 
 			return extract.getDigests();
 
-		} catch (ConnectException e) {
+		} catch (ConnectException | SSLHandshakeException e) {
+			// ConnectException -> no TLS-capable service @host
+			// SSLHandshakeException -> wrong keyalgo
 			log.debug("Can't connect to " + host + ": " + e);
 			return null;
 		} catch (NoSuchAlgorithmException | KeyManagementException
@@ -307,7 +310,7 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 						return;
 					}
 					if (this.scheduledHosts.contains(this.host)) {
-						log.debug("Removing "+this.host+" from scheduler");
+						log.debug("Removing " + this.host + " from scheduler");
 						this.scheduledHosts.remove(this.host);
 					}
 
