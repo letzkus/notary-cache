@@ -2,6 +2,9 @@ package de.donotconnect.notary_cache.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -21,7 +24,7 @@ import de.donotconnect.notary_cache.operator.NotaryImpl.DefaultNotary;
 
 public class OperatorMain extends AbstractHandler implements IListener {
 
-	public final int _NOTARY_CACHE_VERSION_ = 1;
+	public static final int _NOTARY_CACHE_VERSION_ = 1;
 
 	public static void main(String[] args) {
 		OperatorMain op = new OperatorMain();
@@ -44,6 +47,12 @@ public class OperatorMain extends AbstractHandler implements IListener {
 		this.evntMgr = EventMgr.getInstance();
 		this.hwmon = new HwMonitor(this.hwmonPolling);
 		this.server = new Server(this);
+		
+		/**
+		 * Initialize Cache Elements
+		 */
+		this.cache = new InMemoryCache();
+		this.cachingStrategy = new SimpleCachingStrategy();
 		this.notary = new DefaultNotary();
 
 		/**
@@ -51,19 +60,13 @@ public class OperatorMain extends AbstractHandler implements IListener {
 		 */
 		this.evntMgr.registerEventListener("quit", this);
 		this.evntMgr.registerEventListener("hwmon-notify", this);
-
-		/**
-		 * Initialize Cache Elements
-		 */
-		this.cache = new InMemoryCache();
-		this.cachingStrategy = new SimpleCachingStrategy();
 	}
 
 	public void startOperator() {
 		this.hwmon.start();
 		this.server.start();
 		this.evntMgr.interactive();
-		this.cachingStrategy.manage(this.cache, this.notary);
+		this.cachingStrategy.manage(this.cache);
 	}
 
 	public void stopOperator() {
@@ -133,30 +136,72 @@ public class OperatorMain extends AbstractHandler implements IListener {
 
 		// TODO implement interface
 
-		if (target.equals("/.well-known/notary-cache")) {
-			
-			resp.setContentType("text/html; charset=utf-8");
+		if (baseRequest.getContextPath().startsWith(
+				"/.well-known/notary-cache-config")) {
+
+			resp.setContentType("application/x-notarycache-config; charset=utf-8");
 			resp.setStatus(HttpServletResponse.SC_OK);
-			
+
 			PrintWriter out = resp.getWriter();
-			out.println(this.cachingStrategy.getCacheAsString());
+			out.println(Configuration.getInstance().getConfigAsString());
+
+		} else if (baseRequest.getContextPath().startsWith(
+				"/.well-known/notary-cache")) {
+
+			resp.setContentType("application/x-notarycache; charset=utf-8");
+			resp.setStatus(HttpServletResponse.SC_OK);
+
+			StringBuffer result = new StringBuffer();
+			Configuration conf = Configuration.getInstance();
+			PrintWriter out = resp.getWriter();
+
+			// Build header
+			result.append(conf.getAttribute("instance.ip") + ";"
+					+ conf.getAttribute("instance.port") + ";"
+					+ conf.getAttribute("instance.hostname") + ";"
+					+ conf.getAttribute("cache.validity_start") + ";"
+					+ conf.getAttribute("cache.validity_end") + ";"
+					+ conf.getAttribute("crypto.hashalgo") + ";"
+					+ conf.getAttribute("crypto.signalgo") + "\n");
+
+			// Get Body
+			result.append(this.cachingStrategy.getCacheAsString(';',','));
+
+			// Build footer
+			MessageDigest md;
+			// Calculate digest
+			try {
+				md = MessageDigest.getInstance(conf
+						.getAttribute("crypto.hashalgo"));
+				md.update(result.toString().getBytes(
+						Charset.forName(conf
+								.getAttribute("instance.string_encoding"))));
+				// Calculate signature and append to result;
+				result.append(conf.sign((new java.math.BigInteger(1, md
+						.digest())).toString(16)));
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			
-			baseRequest.setHandled(true);
+			// Return everything
+			out.println(result.toString());
 
-		} else if (target.equals("/.well-known/notary-cache-config")) {
+		} else if (baseRequest.getContextPath().startsWith(
+				"/.well-known/notary")) {
 
-		} else if (target.equals("/.well-known/notary")) {
-
-			this.notary.handleRequest(target, baseRequest, req, resp);
+			this.notary.handleRequest(target, baseRequest, req, resp, this.cachingStrategy);
 
 		}
 
-		resp.setContentType("text/html; charset=utf-8");
-		resp.setStatus(HttpServletResponse.SC_OK);
-
-		PrintWriter out = resp.getWriter();
-
-		out.println(target + " --- " + baseRequest.toString());
+		/*
+		 * resp.setContentType("text/html; charset=utf-8");
+		 * resp.setStatus(HttpServletResponse.SC_OK);
+		 * 
+		 * PrintWriter out = resp.getWriter();
+		 * 
+		 * out.println(target + " --- " + baseRequest.toString());
+		 */
 
 		baseRequest.setHandled(true);
 

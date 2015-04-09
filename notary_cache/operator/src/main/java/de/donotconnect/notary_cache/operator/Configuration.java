@@ -239,4 +239,19 @@ public class Configuration implements IListener {
 
 		return null;
 	}
+	
+	public String getConfigAsString() {
+		StringBuffer sb = new StringBuffer();
+		
+		sb.append("version="+OperatorMain._NOTARY_CACHE_VERSION_+"\n");
+		sb.append("contact="+this.getAttribute("base.contact")+"\n");
+		sb.append("pgpid="+this.getAttribute("base.pgpid")+"\n");
+		sb.append("notary.protocol="+this.getAttribute("notary.protocol")+"\n");
+		sb.append("replicates.uri="+this.getAttribute("replicates.uri")+"\n");
+		sb.append("replicates.probability="+this.getAttribute("replicates.probability")+"\n");
+		sb.append("publickey="+this.getAttribute("crypto.pubKey")+"\n");
+		sb.append("publickey.validity="+this.getAttribute("cache.validity_end")+"\n");
+		
+		return sb.toString();
+	}
 }

@@ -25,9 +25,12 @@ public class Server {
 			ContextHandler cacheConfigHandler = new ContextHandler(
 					"/.well-known/notary-cache-config");
 			cacheConfigHandler.setHandler(op);
+			ContextHandler notaryHandler = new ContextHandler(
+					"/.well-known/notary");
+			notaryHandler.setHandler(op);
 			ContextHandlerCollection contextHandlerList = new ContextHandlerCollection();
 			contextHandlerList.setHandlers(new Handler[] { cacheHandler,
-					cacheConfigHandler });
+					cacheConfigHandler, notaryHandler });
 
 			/**
 			 * Initialize jetty

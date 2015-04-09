@@ -10,6 +10,9 @@ import org.eclipse.jetty.server.Request;
 import de.donotconnect.notary_cache.operator.Configuration;
 
 public abstract class AbstractNotary {
+	
+	public static final int _SC_OK_	= 0;
+	public static final int _SC_NOK_ = 1;
 
 	protected InetAddress host;
 	protected int port;
@@ -20,7 +23,7 @@ public abstract class AbstractNotary {
 				.getAttribute("crypto.hashalgo");
 	}
 
-	public void setTargetHost(AbstractEntry e) {
+	public void setTargetHost(DefaultEntry e) {
 		try {
 			this.host = InetAddress.getByAddress(e.getHostname(), e.getIP());
 			this.port = e.getPort();
@@ -36,6 +39,6 @@ public abstract class AbstractNotary {
 	public abstract String examRolesOnTargetHost();
 
 	public abstract void handleRequest(String target, Request baseRequest,
-			HttpServletRequest req, HttpServletResponse resp);
+			HttpServletRequest req, HttpServletResponse resp, ICacheStrategy cs);
 
 }

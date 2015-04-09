@@ -2,56 +2,55 @@ package de.donotconnect.notary_cache.operator.CacheImpl;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.HTreeMap;
 
+import de.donotconnect.notary_cache.operator.Configuration;
 import de.donotconnect.notary_cache.operator.Interfaces.ICache;
-import de.donotconnect.notary_cache.operator.Interfaces.AbstractEntry;
+import de.donotconnect.notary_cache.operator.Interfaces.DefaultEntry;
 
 public class InMemoryCache implements ICache {
 
 	DB db;
-	HTreeMap<String, AbstractEntry> cache;
+	HTreeMap<String, DefaultEntry> cache;
 
 	public InMemoryCache() {
-		this.db = DBMaker.newFileDB(new File("cache.db")).make();
-		this.cache = db.createHashMap("cachestruct").makeOrGet();
+		this.open();
 	}
 
-	public InMemoryCache(DB db, HTreeMap<String, AbstractEntry> c) {
+	public InMemoryCache(DB db, HTreeMap<String, DefaultEntry> c) {
 		this.db = db;
 		this.cache = c;
 	}
 
 	@Override
-	public AbstractEntry getEntry(AbstractEntry base) {
+	public DefaultEntry getEntry(DefaultEntry base) {
 		return this.cache.get(base.getIdentifier());
 	}
 
 	@Override
-	public void addEntry(AbstractEntry e) {
-		if(this.cache.containsKey(e.getIdentifier())) {
+	public void addEntry(DefaultEntry e) {
+		if (this.cache.containsKey(e.getIdentifier())) {
 			this.cache.remove(e.getIdentifier());
 		}
 		this.cache.put(e.getIdentifier(), e);
-		db.commit();
 	}
 
 	@Override
-	public void removeEntry(AbstractEntry base) {
+	public void removeEntry(DefaultEntry base) {
 		this.cache.remove(base.getIdentifier());
-		db.commit();
 	}
 
 	@Override
-	public Collection<AbstractEntry> getCollection() {
+	public Collection<DefaultEntry> getCollection() {
 		return this.cache.values();
 	}
 
 	@Override
-	public boolean entryExists(AbstractEntry base) {
+	public boolean entryExists(DefaultEntry base) {
 		return this.cache.containsKey(base.getIdentifier());
 	}
 
@@ -60,4 +59,34 @@ public class InMemoryCache implements ICache {
 		return this.cache.size();
 	}
 
+	@Override
+	public void commit() {
+		db.commit();
+	}
+
+	@Override
+	public void close() {
+		this.commit();
+		this.cache.close();
+		this.db.close();
+	}
+
+	@Override
+	public void open() {
+		Configuration conf = Configuration.getInstance();
+		this.db = DBMaker.newFileDB(new File("cache.db")).make();
+		if (!conf.getAttribute("cache.entry_lifetime").equals("")
+				|| !conf.getAttribute("cache.entry_lifetime").equals("0"))
+			this.cache = db
+					.createHashMap("cachestruct")
+					.expireAfterAccess(
+							Integer.valueOf(conf
+									.getAttribute("cache.entry_lifetime")),
+							TimeUnit.valueOf(conf
+									.getAttribute("cache.entry_lifetime.unit")))
+					.makeOrGet();
+		else
+			this.cache = db.createHashMap("cachestruct").makeOrGet();
+
+	}
 }

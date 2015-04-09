@@ -4,11 +4,14 @@ import java.util.Collection;
 
 public interface ICache {
 	
-	public AbstractEntry getEntry(AbstractEntry base);
-	public void addEntry(AbstractEntry e);
-	public void removeEntry(AbstractEntry base);
-	public boolean entryExists(AbstractEntry base);
-	public Collection<AbstractEntry> getCollection();
+	public DefaultEntry getEntry(DefaultEntry base);
+	public void addEntry(DefaultEntry e);
+	public void removeEntry(DefaultEntry base);
+	public boolean entryExists(DefaultEntry base);
+	public Collection<DefaultEntry> getCollection();
 	public int size();
+	public void commit();
+	public void close();
+	public void open();
 
 }

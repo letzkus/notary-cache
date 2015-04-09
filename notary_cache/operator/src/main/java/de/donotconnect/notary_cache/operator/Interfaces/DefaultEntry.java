@@ -6,10 +6,11 @@ import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 
 import de.donotconnect.notary_cache.operator.Configuration;
 
-public abstract class AbstractEntry implements Serializable {
+public class DefaultEntry implements Serializable {
 
 	/**
 	 * 
@@ -19,8 +20,10 @@ public abstract class AbstractEntry implements Serializable {
 	private final int port;
 	private final String keyalgo;
 	private final String ident;
+	private ArrayList<String> digests = new ArrayList<String>();
+	private int roles = 0;
 
-	public AbstractEntry(byte[] ip, int port, String hostname, String keyalgo)
+	public DefaultEntry(byte[] ip, int port, String hostname, String keyalgo)
 			throws NoSuchAlgorithmException, UnknownHostException {
 		this.host = InetAddress.getByAddress(hostname, ip);
 		this.port = port;
@@ -58,6 +61,43 @@ public abstract class AbstractEntry implements Serializable {
 
 	public String getKeyalgo() {
 		return keyalgo;
+	}
+	
+	public String getDigestsAsString(char delimiter) {
+		StringBuilder sb = new StringBuilder();
+		for (int i=0;i<this.digests.size();i++) {
+			sb.append(this.digests.get(i));
+			if(i<this.digests.size()-1)
+				sb.append(';');
+		}
+		return sb.toString();
+	}
+
+	public String getRolesAsString() {
+		return Integer.toString(this.roles);
+	}
+
+	public void addDigest(int pos, String digest) {
+		this.digests.add(pos, digest);
+	}
+
+	public void setRoles(int roles) {
+		this.roles = roles;
+	}
+	
+	public void addDigests(String[] digests){
+		for(String d : digests)
+			this.digests.add(d);
+	}
+	
+	@Override
+	public String toString() {
+		char firstDelim=';';
+		char secondDelim=',';
+		return this.getIPasString() + firstDelim + this.getPort() + firstDelim
+				+ this.getHostname() + firstDelim + this.getKeyalgo() + firstDelim
+				+ this.getDigestsAsString(secondDelim) + firstDelim
+				+ this.getRolesAsString() + System.lineSeparator();
 	}
 
 }

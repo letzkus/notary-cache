@@ -15,6 +15,7 @@ import com.sun.jersey.api.client.UniformInterfaceException;
 
 import de.donotconnect.notary_cache.operator.Configuration;
 import de.donotconnect.notary_cache.operator.Interfaces.AbstractNotary;
+import de.donotconnect.notary_cache.operator.Interfaces.ICacheStrategy;
 
 public class PerspectivesNotary extends AbstractNotary {
 
@@ -111,7 +112,7 @@ public class PerspectivesNotary extends AbstractNotary {
 
 	@Override
 	public void handleRequest(String target, Request baseRequest,
-			HttpServletRequest req, HttpServletResponse resp) {
+			HttpServletRequest req, HttpServletResponse resp, ICacheStrategy cs) {
 		// TODO Auto-generated method stub
 		
 	}
