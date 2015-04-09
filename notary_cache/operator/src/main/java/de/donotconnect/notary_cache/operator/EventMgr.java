@@ -32,7 +32,7 @@ public class EventMgr extends Thread implements IListener {
 	}
 
 	private void processEvent(String fullEventCode) {
-		if (!fullEventCode.trim().equals("")) {			
+		if (fullEventCode != null && !fullEventCode.trim().equals("")) {			
 			String event = fullEventCode.split(" ")[0];
 			if (this.eventListeners.containsKey(event)) {
 				ArrayList<IListener> listeners = this.eventListeners.get(event);

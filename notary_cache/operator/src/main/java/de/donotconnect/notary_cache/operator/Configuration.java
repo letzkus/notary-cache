@@ -182,6 +182,7 @@ public class Configuration implements IListener {
 		 * Generate data about this notary TODO
 		 */
 		config.put("instance.string_encoding", "UTF-8");
+		config.put("cache.directory",System.getProperty("basedir")+"/var");
 		config.put("cache.validity_start", "0");
 		config.put("cache.validity_end", "0");
 		config.put("cache.validity_period", "604800"); /* one week */
