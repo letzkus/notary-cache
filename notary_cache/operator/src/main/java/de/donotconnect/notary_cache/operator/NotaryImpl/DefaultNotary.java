@@ -190,8 +190,11 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	@Override
 	public void handleRequest(String target, Request baseRequest,
 			HttpServletRequest req, HttpServletResponse resp, ICacheStrategy cs) {
-
+		
 		try {
+			
+			resp.setContentType("text/plain; charset=utf-8");
+			PrintWriter out = resp.getWriter();
 
 			// Parse input
 			String hostname = req.getParameter("hostname");
@@ -199,14 +202,14 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 			int port = Integer
 					.valueOf((req.getParameter("port") == null) ? "443" : req
 							.getParameter("port"));
-			String keyalgo = (req.getParameter("hostname") == null) ? "RSA"
-					: req.getParameter("hostname");
+			String keyalgo = (req.getParameter("keyalgo") == null) ? "RSA"
+					: req.getParameter("keyalgo");
 
 			if (hostname == null) {
 				if (ip == null) {
 					// Both == null is bad...
-					resp.setContentType("text/plain; charset=utf-8");
 					resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+					out.println(_SC_BAD_REQUEST_);
 					return;
 				} else {
 					hostname = InetAddress.getByName(ip).getCanonicalHostName();
@@ -216,7 +219,7 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 					ip = InetAddress.getByName(hostname).getHostAddress();
 				}
 			}
-
+			
 			DefaultEntry entry = cs.getEntry(new DefaultEntry(InetAddress
 					.getByName(ip).getAddress(), port, hostname, keyalgo));
 
@@ -224,17 +227,16 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 			// 404
 			if (entry == null) {
 				// Issue Event to evaluate
-				e.newEvent("new-request " + host.getHostAddress() + " " + port
-						+ " " + host.getHostName() + " " + keyalgo);
-				resp.setContentType("text/plain; charset=utf-8");
+				e.newEvent("new-request " + ip + " " + port
+						+ " " + hostname + " " + keyalgo);
 				resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+				out.print(_SC_REQUEST_SCHEDULED_);
 				return;
 			}
 
 			// Else return entry;
-			PrintWriter out = resp.getWriter();
-			resp.setContentType("application/x-notarycache-entry; charset=utf-8");
 			resp.setStatus(HttpServletResponse.SC_OK);
+			out.println(_SC_OK_);
 			out.println(entry.toString());
 
 		} catch (IOException | NoSuchAlgorithmException e) {

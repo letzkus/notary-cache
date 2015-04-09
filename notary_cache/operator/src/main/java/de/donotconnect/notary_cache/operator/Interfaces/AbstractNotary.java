@@ -12,7 +12,9 @@ import de.donotconnect.notary_cache.operator.Configuration;
 public abstract class AbstractNotary {
 	
 	public static final int _SC_OK_	= 0;
-	public static final int _SC_NOK_ = 1;
+	public static final int _SC_BAD_REQUEST_ = 1;
+	public static final int _SC_NOT_FOUND_ = 2;
+	public static final int _SC_REQUEST_SCHEDULED_ = 3;
 
 	protected InetAddress host;
 	protected int port;
