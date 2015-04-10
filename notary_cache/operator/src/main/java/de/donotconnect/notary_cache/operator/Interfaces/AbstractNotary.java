@@ -7,8 +7,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.Request;
 
-import de.donotconnect.notary_cache.operator.Configuration;
-
 public abstract class AbstractNotary {
 	
 	public static final int _SC_OK_	= 0;
@@ -19,11 +17,6 @@ public abstract class AbstractNotary {
 	protected InetAddress host;
 	protected int port;
 	protected String keyalgo;
-
-	public String getHashalgo() {
-		return Configuration.getInstance()
-				.getAttribute("crypto.hashalgo");
-	}
 
 	public void setTargetHost(DefaultEntry e) {
 		try {

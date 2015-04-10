@@ -160,7 +160,7 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 
 		// Build body
 		for (DefaultEntry entry : cache) {
-				result.append(entry.toString());
+				result.append(entry.toString()+"\n");
 		}
 
 		// Return body

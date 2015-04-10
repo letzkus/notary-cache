@@ -2,6 +2,7 @@ package de.donotconnect.notary_cache.operator;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -182,7 +183,7 @@ public class Configuration implements IListener {
 		 * Generate data about this notary TODO
 		 */
 		config.put("instance.string_encoding", "UTF-8");
-		config.put("cache.directory",System.getProperty("basedir")+"/var");
+		config.put("cache.directory", System.getProperty("basedir") + "/var");
 		config.put("cache.validity_start", "0");
 		config.put("cache.validity_end", "0");
 		config.put("cache.validity_period", "604800"); /* one week */
@@ -230,7 +231,7 @@ public class Configuration implements IListener {
 			Signature signature = Signature.getInstance(
 					config.get("crypto.signalgo"), "BC");
 			signature.initSign(privKey, new SecureRandom());
-			signature.update(tosign.getBytes());
+			signature.update(tosign.getBytes(Charset.forName(config.get("instance.string_encoding"))));
 			byte[] sigBytes = signature.sign();
 			return Base64.getEncoder().encodeToString(sigBytes);
 		} catch (NoSuchAlgorithmException | InvalidKeyException
@@ -242,19 +243,23 @@ public class Configuration implements IListener {
 
 		return null;
 	}
-	
+
 	public String getConfigAsString() {
 		StringBuffer sb = new StringBuffer();
-		
-		sb.append("version="+OperatorMain._NOTARY_CACHE_VERSION_+"\n");
-		sb.append("contact="+this.getAttribute("base.contact")+"\n");
-		sb.append("pgpid="+this.getAttribute("base.pgpid")+"\n");
-		sb.append("notary.protocol="+this.getAttribute("notary.protocol")+"\n");
-		sb.append("replicates.uri="+this.getAttribute("replicates.uri")+"\n");
-		sb.append("replicates.probability="+this.getAttribute("replicates.probability")+"\n");
-		sb.append("publickey="+this.getAttribute("crypto.pubKey")+"\n");
-		sb.append("publickey.validity="+this.getAttribute("cache.validity_end")+"\n");
-		
+
+		sb.append("version=" + OperatorMain._NOTARY_CACHE_VERSION_ + "\n");
+		sb.append("contact=" + this.getAttribute("base.contact") + "\n");
+		sb.append("pgpid=" + this.getAttribute("base.pgpid") + "\n");
+		sb.append("notary.protocol=" + this.getAttribute("notary.protocol")
+				+ "\n");
+		sb.append("replicates.uri=" + this.getAttribute("replicates.uri")
+				+ "\n");
+		sb.append("replicates.probability="
+				+ this.getAttribute("replicates.probability") + "\n");
+		sb.append("publickey=" + this.getAttribute("crypto.pubKey") + "\n");
+		sb.append("publickey.validity="
+				+ this.getAttribute("cache.validity_end") + "\n");
+
 		return sb.toString();
 	}
 }

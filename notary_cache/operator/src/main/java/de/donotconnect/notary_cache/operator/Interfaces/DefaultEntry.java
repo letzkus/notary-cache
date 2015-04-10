@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import de.donotconnect.notary_cache.operator.Configuration;
 
 public class DefaultEntry implements Serializable {
+	
+	public final String _ROLE_NONE_ = "0";
+	public final String _ROLE_OPERATOR_ = "1";
 
 	/**
 	 * 
@@ -97,7 +100,7 @@ public class DefaultEntry implements Serializable {
 		return this.getIPasString() + firstDelim + this.getPort() + firstDelim
 				+ this.getHostname() + firstDelim + this.getKeyalgo() + firstDelim
 				+ this.getDigestsAsString(secondDelim) + firstDelim
-				+ this.getRolesAsString() + System.lineSeparator();
+				+ this.getRolesAsString();
 	}
 
 }

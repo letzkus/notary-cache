@@ -256,7 +256,6 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	@Override
 	public void doAction(String evnt) {
 		log.debug("Received event: " + evnt);
-		Configuration conf = Configuration.getInstance();
 		if (evnt.startsWith("new-request")) {
 			/**
 			 * new-requests has the following arguments:
@@ -320,18 +319,9 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 					sb.append(" " + args[2]); // port
 					sb.append(" " + args[3]); // hostname
 					sb.append(" " + args[4]); // keyalgo
-					if (!this.getHashalgo().equals(
-							conf.getAttribute("crypto.hashalgo")))
-						sb.append(" " + this.getHashalgo() + ":" + digests[0]);
-					else
-						sb.append(" " + digests[0]);
+					sb.append(" " + digests[0]);
 					for (int i = 1; i < digests.length; i++) {
-						if (!this.getHashalgo().equals(
-								conf.getAttribute("crypto.hashalgo")))
-							sb.append("," + this.getHashalgo() + ":"
-									+ digests[0]);
-						else
-							sb.append("," + digests[0]);
+							sb.append("," + digests[i]);
 					}
 					sb.append(" " + this.examRolesOnTargetHost());
 
