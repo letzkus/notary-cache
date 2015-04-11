@@ -1,0 +1,36 @@
+-------------------------------------------------------------------------------------------------
+First 1000 entries of Alexa Top1m:
+
+tbd
+
+Server:
+tbd
+
+Client:
+$ ls -lh cache-522.txt 
+-rw-r-----@ 1 fabianletzkus  staff   107K 11 Apr 14:55 cache-522.txt
+$ gzip -9 cache-522.txt
+$ ls -lh cache-522.txt.gz 
+-rw-r-----@ 1 fabianletzkus  staff    32K 11 Apr 15:53 cache-522.txt.gz
+
+-------------------------------------------------------------------------------------------------
+First 10000 entries of Alexa Top1m:
+
+2840 seconds or 47.333332 minutes results in ~4173 Chains
+
+Server:
+letzkus@z:~$ ls -lh notary-cache/var/
+insgesamt 2,9M
+-rw-r--r-- 1 root root  99K Apr 11 15:44 cache.db
+-rw-r--r-- 1 root root 1,7M Apr 11 15:44 cache.db.p
+-rw-r--r-- 1 root root 785K Apr 11 15:46 cache.db.t
+
+Client:
+$ ls -lh cache-4173.txt 
+-rw-r-----@ 1 fabianletzkus  staff   840K 11 Apr 15:46 cache-4173.txt
+$ gzip -9 cache-4173.txt
+$ ls -lh cache-4173.txt.gz 
+-rw-r-----@ 1 fabianletzkus  staff   271K 11 Apr 15:53 cache-4173.txt.gz
+
+-------------------------------------------------------------------------------------------------
+
