@@ -2,13 +2,13 @@ package de.donotconnect.notary_cache.operator.NotaryImpl;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.ConnectException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.security.KeyManagementException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -21,6 +21,7 @@ import javax.net.ssl.SNIServerName;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLProtocolException;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -45,6 +46,8 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	private final ScheduledExecutorService scheduler = Executors
 			.newScheduledThreadPool(1);
 	private ArrayList<InetAddress> scheduledHosts = new ArrayList<InetAddress>();
+	public static int maxThreads = 100;
+	private static int numThreads = 0;
 
 	public DefaultNotary() {
 		e = EventMgr.getInstance();
@@ -97,18 +100,29 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	}
 
 	@Override
-	public String[] getDigestsFromTargetHost() {
+	public String[] getDigestsFromTargetHost() throws HostConnectionException {
 		// TODO Auto-generated method stub
 
+		log.debug("Getting digests from host " + host);
+
+		log.debug("Instanciating certificate extractor.");
 		CertificateExtractor extract = new CertificateExtractor();
 
+		SSLSocket socket = null;
 		try {
-			final SSLContext sslContext = SSLContext.getInstance("TLS");
-			sslContext.init(null, new TrustManager[] { extract },
-					SecureRandom.getInstanceStrong());
+			// log.debug("Creating SSLContext.");
+			final SSLContext sslContext = SSLContext.getInstance("TLSv1");
+			// log.debug("Initiating SSLContext with TrustManager and SecureRandom");
+			sslContext.init(null, new TrustManager[] { extract }, null);
 
-			SSLSocket socket = (SSLSocket) sslContext.getSocketFactory()
-					.createSocket(this.host.getHostAddress(), this.port);
+			// log.debug("Creating socket..");
+			socket = (SSLSocket) sslContext.getSocketFactory().createSocket();
+			// log.debug("Connecting to socket...");
+			socket.connect(new InetSocketAddress(this.host.getHostAddress(),
+					this.port), Integer.parseInt(Configuration.getInstance()
+					.getAttribute("notary.timeout"))); //
+			socket.setSoTimeout(Integer.parseInt(Configuration.getInstance()
+					.getAttribute("notary.timeout")));
 
 			// We need some parameters..
 			SSLParameters p = new SSLParameters();
@@ -169,21 +183,33 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 
 			socket.setSSLParameters(p);
 
+			// log.debug("Starting handshake..");
 			socket.startHandshake();
 
+			// log.debug("Closing socket..");
 			socket.close();
 
+			// log.debug("Returning digests..");
 			return extract.getDigests();
 
-		} catch (ConnectException | SSLHandshakeException e) {
+		} catch (SocketTimeoutException e) {
 			// ConnectException -> no TLS-capable service @host
 			// SSLHandshakeException -> wrong keyalgo
+			// Maybe try later
 			log.debug("Can't connect to " + host + ": " + e);
+			if (!socket.isClosed())
+				try {
+					socket.close();
+				} catch (IOException e1) {
+					log.debug("IOException during socket.close(): " + e);
+				}
 			return null;
+		} catch (SSLProtocolException | UnknownHostException
+				| SSLHandshakeException | java.net.ConnectException e) {
+			throw new HostConnectionException(e.getMessage());
 		} catch (NoSuchAlgorithmException | KeyManagementException
 				| IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
 		}
 
 		return null;
@@ -199,13 +225,15 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	public void handleRequest(String target, Request baseRequest,
 			HttpServletRequest req, HttpServletResponse resp, ICacheStrategy cs) {
 
+		String hostname = "";
+
 		try {
 
 			resp.setContentType("text/plain; charset=utf-8");
 			PrintWriter out = resp.getWriter();
 
 			// Parse input
-			String hostname = req.getParameter("hostname");
+			hostname = req.getParameter("hostname");
 			String ip = req.getParameter("ip");
 			int port = Integer
 					.valueOf((req.getParameter("port") == null) ? "443" : req
@@ -228,6 +256,12 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 				}
 			}
 
+			final String finalIp = ip;
+			final String finalHost = hostname;
+
+			log.debug("Received http request " + hostname + "/" + ip
+					+ ". Looking up cache.");
+
 			DefaultEntry entry = cs.getEntry(new DefaultEntry(InetAddress
 					.getByName(ip).getAddress(), port, hostname, keyalgo));
 
@@ -235,21 +269,54 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 			// 404
 			if (entry == null) {
 				// Issue Event to evaluate
-				e.newEvent("new-request " + ip + " " + port + " " + hostname
-						+ " " + keyalgo);
-				resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-				out.print(_SC_REQUEST_SCHEDULED_);
+				log.debug("Entry not found in cache, adding it.");
+
+				final Runnable request = new Runnable() {
+					public void run() {
+						// EventMgr e = EventMgr.getInstance();
+						e.newEvent("new-request " + finalIp + " " + port + " "
+								+ finalHost + " " + keyalgo);
+						numThreads--;
+					}
+				};
+
+				if (maxThreads > numThreads) {
+					log.debug("(Thread-" + numThreads
+							+ ") Sending event: new-request " + ip + " " + port
+							+ " " + hostname + " " + keyalgo);
+					(new Thread(request)).start();
+					numThreads++;
+				} else {
+					log.debug("Sending event: new-request " + ip + " " + port
+							+ " " + hostname + " " + keyalgo);
+					request.run();
+				}
+
+				// Returning data
+				resp.setStatus(HttpServletResponse.SC_OK);
+				out.println(_SC_REQUEST_SCHEDULED_);
+
 				return;
 			}
-
+			log.debug("Entry found in cache, returning it to client.");
 			// Else return entry;
 			resp.setStatus(HttpServletResponse.SC_OK);
 			out.println(_SC_OK_);
 			out.println(entry.toString());
 
-		} catch (IOException | NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			log.debug("Couldn't resolve host " + hostname
+					+ " or algorithm is not correct: " + e);
+			try {
+				PrintWriter out = resp.getWriter();
+				resp.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+				out.println(_SC_INTERNAL_ERROR_);
+			} catch (IOException e1) {
+				log.debug("IOException: " + e);
+			}
+
+		} catch (IOException e) {
+			log.debug("IOException: " + e);
 		}
 	}
 
@@ -272,7 +339,7 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 					int port = Integer.parseInt(args[2]);
 
 					this.setTargetHost(new DefaultEntry(ip.getAddress(), port,
-							args[3], args[4])); // sets this.host
+							args[3], args[4])); // sets this.hostname
 
 					String[] digests = this.getDigestsFromTargetHost();
 
@@ -282,7 +349,17 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 							&& !(args.length == 6 && args[5].equals("false"))) {
 						log.debug("Notary didn't return a result for " + ip
 								+ "/" + args[3] + ":" + port);
-						if (!this.scheduledHosts.contains(this.host)) {
+						if (!this.scheduledHosts.contains(this.host)
+								&& Configuration.getInstance().getAttribute(
+										"instance.retry") != null
+								&& Configuration.getInstance()
+										.getAttribute("instance.retry")
+										.equals("true")
+								&& this.scheduledHosts.size() < Integer
+										.parseInt(Configuration
+												.getInstance()
+												.getAttribute(
+														"instance.retry_max_size"))) {
 							log.debug("Scheduling host evaluation.");
 							final String eventcode;
 							if (evnt.endsWith("true")) {
@@ -302,9 +379,8 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 							};
 							scheduler.schedule(scheduledRequest, 1,
 									TimeUnit.MINUTES);
-
 						} else {
-							log.debug("Host evaluation already scheduled.");
+							log.debug("Host evaluation already scheduled, scheduler is full or scheduling disabled.");
 						}
 						return;
 					}
@@ -321,22 +397,20 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 					sb.append(" " + args[4]); // keyalgo
 					sb.append(" " + digests[0]);
 					for (int i = 1; i < digests.length; i++) {
-							sb.append("," + digests[i]);
+						sb.append("," + digests[i]);
 					}
 					sb.append(" " + this.examRolesOnTargetHost());
 
 					log.debug("Sending event: " + sb.toString());
 					this.e.newEvent(sb.toString());
 
-				} catch (UnknownHostException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
 				} catch (NoSuchAlgorithmException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
+				} catch (UnknownHostException | HostConnectionException e1) {
+
 				}
 			}
 		}
 	}
-
 }

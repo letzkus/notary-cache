@@ -176,6 +176,7 @@ public class Configuration implements IListener {
 					.containsKey("internal.crypto.privKey"))) {
 			log.error("Configuration is invalid. Quitting.");
 			this.e.newEvent("quit");
+
 			System.exit(1);
 		}
 
@@ -183,6 +184,8 @@ public class Configuration implements IListener {
 		 * Generate data about this notary TODO
 		 */
 		config.put("instance.string_encoding", "UTF-8");
+		config.put("instance.retry", "false");
+		config.put("instance.retry_max_size", "20");
 		config.put("cache.directory", System.getProperty("basedir") + "/var");
 		config.put("cache.validity_start", "0");
 		config.put("cache.validity_end", "0");
@@ -231,7 +234,8 @@ public class Configuration implements IListener {
 			Signature signature = Signature.getInstance(
 					config.get("crypto.signalgo"), "BC");
 			signature.initSign(privKey, new SecureRandom());
-			signature.update(tosign.getBytes(Charset.forName(config.get("instance.string_encoding"))));
+			signature.update(tosign.getBytes(Charset.forName(config
+					.get("instance.string_encoding"))));
 			byte[] sigBytes = signature.sign();
 			return Base64.getEncoder().encodeToString(sigBytes);
 		} catch (NoSuchAlgorithmException | InvalidKeyException

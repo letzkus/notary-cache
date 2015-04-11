@@ -2,10 +2,13 @@ package de.donotconnect.notary_cache.operator.Interfaces;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.Request;
+
+import de.donotconnect.notary_cache.operator.NotaryImpl.HostConnectionException;
 
 public abstract class AbstractNotary {
 	
@@ -13,6 +16,7 @@ public abstract class AbstractNotary {
 	public static final int _SC_BAD_REQUEST_ = 1;
 	public static final int _SC_NOT_FOUND_ = 2;
 	public static final int _SC_REQUEST_SCHEDULED_ = 3;
+	public static final int _SC_INTERNAL_ERROR_ = 4;
 
 	protected InetAddress host;
 	protected int port;
@@ -29,9 +33,9 @@ public abstract class AbstractNotary {
 		}
 	}
 
-	public abstract String[] getDigestsFromTargetHost();
+	public abstract String[] getDigestsFromTargetHost() throws HostConnectionException;
 
-	public abstract String examRolesOnTargetHost();
+	public abstract String examRolesOnTargetHost()  throws HostConnectionException;
 
 	public abstract void handleRequest(String target, Request baseRequest,
 			HttpServletRequest req, HttpServletResponse resp, ICacheStrategy cs);

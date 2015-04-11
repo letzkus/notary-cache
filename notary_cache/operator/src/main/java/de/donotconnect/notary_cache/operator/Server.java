@@ -1,10 +1,10 @@
 package de.donotconnect.notary_cache.operator;
 
-import java.net.InetSocketAddress;
-
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 public class Server {
 
@@ -35,10 +35,14 @@ public class Server {
 			/**
 			 * Initialize jetty
 			 */
-			this.jetty = new org.eclipse.jetty.server.Server(
-					new InetSocketAddress(
-							conf.getAttribute("instance.ip"),
-							Integer.parseInt(conf.getAttribute("instance.port"))));
+	        QueuedThreadPool threadPool = new QueuedThreadPool();
+	        threadPool.setMaxThreads(500);
+			this.jetty = new org.eclipse.jetty.server.Server(threadPool);
+			ServerConnector http = new ServerConnector(this.jetty);
+	        http.setIdleTimeout(200);		
+	        http.setHost(conf.getAttribute("instance.ip"));
+	        http.setPort(Integer.parseInt(conf.getAttribute("instance.port")));
+			this.jetty.addConnector(http);
 			this.jetty.setHandler(contextHandlerList);
 
 		} catch (Exception e) {
@@ -59,8 +63,9 @@ public class Server {
 
 	public void start() {
 		try {
-			if (jetty != null)
+			if (jetty != null) {
 				this.jetty.start();
+			}
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

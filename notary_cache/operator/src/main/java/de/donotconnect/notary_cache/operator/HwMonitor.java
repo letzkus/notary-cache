@@ -46,24 +46,26 @@ public class HwMonitor extends Thread implements IListener {
 			while (!this.quit) {
 
 				double memFree = (mem.getActualFree() / 1024 / 1024);
-				ifstat = sigar.getNetInterfaceStat("en0");
+				ifstat = sigar.getNetInterfaceStat(Configuration.getInstance()
+						.getAttribute("instance.interface"));
 				double rxtx_now = (ifstat.getRxBytes() + ifstat.getTxBytes()) / 1024;
 				double[] load = sigar.getLoadAverage(); // %-1, %-5, %-15
 				long time = System.currentTimeMillis() / 1000;
 
 				StringBuilder evnt = new StringBuilder();
 				evnt.append("hwmon-notify");
-				
+
 				// Add various parameters
 				evnt.append(" load=" + df.format(load[0]) + ","
 						+ df.format(load[1]) + "," + df.format(load[2]));
 				evnt.append(" cpu_idle=" + df.format(cpu.getIdle()));
 				evnt.append(" mem=" + df.format(memFree));
-				
-				if(rxtx_then != 0)
-					evnt.append(" bw=" + df.format(Math.abs(rxtx_now - rxtx_then)));
-				
-				evnt.append(" time="+String.valueOf(time));
+
+				if (rxtx_then != 0)
+					evnt.append(" bw="
+							+ df.format(Math.abs(rxtx_now - rxtx_then)));
+
+				evnt.append(" time=" + String.valueOf(time));
 
 				log.debug("Sending event: " + evnt.toString());
 

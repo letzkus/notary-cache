@@ -6,6 +6,9 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import de.donotconnect.notary_cache.operator.Interfaces.IListener;
 
 public class EventMgr extends Thread implements IListener {
@@ -13,14 +16,15 @@ public class EventMgr extends Thread implements IListener {
 	private HashMap<String, ArrayList<IListener>> eventListeners = new HashMap<String, ArrayList<IListener>>();
 	private boolean interactiveQuit = false;
 	private static EventMgr instance = null;
-	
+	private final static Logger log = LogManager.getLogger("EventMgr");
+
 	public static synchronized EventMgr getInstance() {
-		if(EventMgr.instance==null) {
+		if (EventMgr.instance == null) {
 			EventMgr.instance = new EventMgr();
 		}
 		return EventMgr.instance;
 	}
-	
+
 	public void registerEventListener(String cmd, IListener listener) {
 		ArrayList<IListener> l;
 		if (this.eventListeners.containsKey(cmd))
@@ -32,7 +36,7 @@ public class EventMgr extends Thread implements IListener {
 	}
 
 	private void processEvent(String fullEventCode) {
-		if (fullEventCode != null && !fullEventCode.trim().equals("")) {			
+		if (fullEventCode != null && !fullEventCode.trim().equals("")) {
 			String event = fullEventCode.split(" ")[0];
 			if (this.eventListeners.containsKey(event)) {
 				ArrayList<IListener> listeners = this.eventListeners.get(event);
@@ -63,9 +67,9 @@ public class EventMgr extends Thread implements IListener {
 				processEvent(fullEventCode);
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.debug("Exception: " + e);
 		}
+		log.debug("Received event: quit");
 	}
 
 	public void doAction(String eventcode) {

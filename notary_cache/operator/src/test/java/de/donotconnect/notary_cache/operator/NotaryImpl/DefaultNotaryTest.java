@@ -10,9 +10,10 @@ public class DefaultNotaryTest {
 
 	/**
 	 * Just a simple test to check output..
+	 * @throws HostConnectionException 
 	 */
 	public static void main(String[] args) throws NoSuchAlgorithmException,
-			UnknownHostException {
+			UnknownHostException, HostConnectionException {
 
 		DefaultNotary dn = new DefaultNotary();
 

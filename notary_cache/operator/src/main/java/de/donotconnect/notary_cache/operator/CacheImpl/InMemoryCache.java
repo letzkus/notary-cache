@@ -74,7 +74,11 @@ public class InMemoryCache implements ICache {
 	@Override
 	public void open() {
 		Configuration conf = Configuration.getInstance();
-		this.db = DBMaker.newFileDB(new File(conf.getAttribute("cache.directory")+"/cache.db")).make();
+		String base=System.getProperty("basedir");
+		if(base!=null)
+			this.db = DBMaker.newFileDB(new File(conf.getAttribute("cache.directory")+"/cache.db")).make();
+		else
+			this.db = DBMaker.newFileDB(new File("cache.db")).make();
 		if (!conf.getAttribute("cache.entry_lifetime").equals("")
 				|| !conf.getAttribute("cache.entry_lifetime").equals("0"))
 			this.cache = db

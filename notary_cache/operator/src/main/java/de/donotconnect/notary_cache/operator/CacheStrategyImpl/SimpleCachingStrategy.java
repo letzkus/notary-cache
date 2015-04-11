@@ -52,7 +52,7 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 
 		log.debug("Received event: " + evnt);
 
-		if(evnt.equals("quit")) {
+		if (evnt.equals("quit")) {
 			this.c.commit();
 		}
 		if (evnt.startsWith("hwmon-notify")) {
@@ -91,7 +91,7 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 					String hostname = val[3];
 					String keyalgo = val[4];
 					String digests = val[5];
-					String roles = (val[6].equals("null"))? "0" : val[6];
+					String roles = (val[6].equals("null")) ? "0" : val[6];
 
 					DefaultEntry e = new DefaultEntry(ip.getAddress(), port,
 							hostname, keyalgo);
@@ -111,12 +111,12 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 			}
 		}
 		if (evnt.startsWith("get-cache-full")) {
-			log.debug(this.getCacheAsString(';',','));
+			log.debug(this.getCacheAsString(';', ','));
 		}
-		if(evnt.startsWith("clear-cache")) {
+		if (evnt.startsWith("clear-cache")) {
 			log.debug("Clearing cache..");
 			Collection<DefaultEntry> ce = this.c.getCollection();
-			for(DefaultEntry e : ce) {
+			for (DefaultEntry e : ce) {
 				this.c.removeEntry(e);
 			}
 			this.e.newEvent("get-cache-info");
@@ -151,7 +151,7 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 	 * Operations
 	 */
 	public String getCacheAsString(char firstDelim, char secondDelim) {
-		
+
 		this.c.commit();
 
 		// Get items
@@ -160,7 +160,7 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 
 		// Build body
 		for (DefaultEntry entry : cache) {
-				result.append(entry.toString()+"\n");
+			result.append(entry.toString() + "\n");
 		}
 
 		// Return body
