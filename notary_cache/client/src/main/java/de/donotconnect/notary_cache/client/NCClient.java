@@ -56,7 +56,7 @@ public class NCClient {
 
 	public void addCache(Cache cache) {
 		if (cache.isValid())
-			this.activeCaches.put(cache.getIdent(), cache);
+			this.activeCaches.put(cache.getIdentifier(), cache);
 	}
 
 	public TargetHost createTargetHost(byte[] ip, int port, String hostname) {
@@ -120,7 +120,7 @@ public class NCClient {
 							e.getHostname(), e.getIP());
 					Cache c = new Cache(host.getHostAddress() + "."
 							+ e.getPort(), host, e.getPort(), false);
-					this.activeCaches.put(c.getIdent(), c);
+					this.activeCaches.put(c.getIdentifier(), c);
 				}
 			} catch (CacheException | UnknownHostException ex) {
 
@@ -135,7 +135,7 @@ public class NCClient {
 				inethost = InetAddress.getByName(host);
 				Cache c = new Cache(inethost.getHostAddress() + ".443",
 						inethost, 443, false);
-				this.activeCaches.put(c.getIdent(), c);
+				this.activeCaches.put(c.getIdentifier(), c);
 			} catch (CacheException | UnknownHostException e) {
 
 			}

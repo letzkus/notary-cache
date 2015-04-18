@@ -82,7 +82,7 @@ public class DefaultEntry implements Serializable {
 		for (int i = 0; i < this.digests.size(); i++) {
 			sb.append(this.digests.get(i));
 			if (i < this.digests.size() - 1)
-				sb.append(';');
+				sb.append(delimiter);
 		}
 		return sb.toString();
 	}
