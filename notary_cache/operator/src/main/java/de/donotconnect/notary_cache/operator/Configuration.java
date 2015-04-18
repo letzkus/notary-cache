@@ -65,6 +65,7 @@ public class Configuration implements IListener {
 		this.e.registerEventListener("config-reload", this);
 		// Regenerate Crypto keypair
 		this.e.registerEventListener("config-generatePK", this);
+		this.e.registerEventListener("set-keysize", this);
 		// HW-info for private configuration
 		this.e.registerEventListener("hwmon-notify", this);
 		// A new cache was issued
@@ -93,6 +94,14 @@ public class Configuration implements IListener {
 		}
 		if (evnt.startsWith("config-generatePK")) {
 			this.generatePK();
+		}
+		if(evnt.startsWith("set-keysize")) {
+			String[] event = evnt.split(" ");
+			if(event.length==2){
+				this.setAttribute("config.keysize", event[1]);
+				log.debug("Changed keysize. Sending config-regeneratePK.");
+				this.e.newEvent("config-regeneratePK");
+			}
 		}
 		if (evnt.startsWith("hwmon-notify")) {
 			// TODO build statistics to adapt to environment
@@ -154,6 +163,7 @@ public class Configuration implements IListener {
 		config.put("crypto.keyalgo", "RSA");
 		config.put("crypto.hashalgo", "SHA-256");
 		config.put("crypto.signalgo", "SHA256withRSA");
+		config.put("crypto.keysize", "4096");
 		config.put("crypt.regeneration_period", "86400"); /* one day */
 		this.generatePK();
 
@@ -207,7 +217,7 @@ public class Configuration implements IListener {
 
 			// Start generation...
 			kpg = KeyPairGenerator.getInstance(config.get("crypto.keyalgo"));
-			kpg.initialize(2048);
+			kpg.initialize(Integer.parseInt(config.get("crypto.keysize")));
 			KeyPair kp = kpg.genKeyPair();
 
 			// Save keypair to config
