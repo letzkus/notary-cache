@@ -24,6 +24,7 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 	private final static Logger log = LogManager
 			.getLogger("SimpleCachingStrategy");
 	private Configuration conf;
+	private int maxCacheSize = 10000;
 
 	public void manage(ICache c) {
 		conf = Configuration.getInstance();
@@ -46,6 +47,7 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 		this.e.registerEventListener("get-cache-info", this);
 		this.e.registerEventListener("get-cache-full", this);
 		this.e.registerEventListener("clear-cache", this);
+		this.e.registerEventListener("set-cache-size", this);
 	}
 
 	public synchronized void doAction(String evnt) {
@@ -54,6 +56,11 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 
 		if (evnt.equals("quit")) {
 			this.c.commit();
+		}
+		if (evnt.startsWith("set-cache-size")) {
+			String[] event = evnt.split(" ");
+			this.maxCacheSize = (event.length == 2) ? Integer
+					.parseInt(event[1]) : this.maxCacheSize;
 		}
 		if (evnt.startsWith("hwmon-notify")) {
 			String[] attrs = evnt.split(" ");
@@ -82,6 +89,10 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 			 * 
 			 * Eventcode - IP - Port - Hostname - Algorithm - digests - roles
 			 */
+			if (this.maxCacheSize != 0 && c.size() >= this.maxCacheSize) {
+				log.debug("maxCacheSize is reached. Add request is discarded.");
+				return;
+			}			
 			String[] val = evnt.split(" ");
 			if (val.length == 7) {
 				try {
@@ -101,7 +112,6 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 					e.setRoles(Integer.parseInt(roles));
 
 					c.addEntry(e);
-
 					notifyOfIssuance();
 
 				} catch (UnknownHostException | NoSuchAlgorithmException e1) {
