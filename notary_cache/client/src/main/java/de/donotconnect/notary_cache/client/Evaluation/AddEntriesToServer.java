@@ -23,8 +23,8 @@ public class AddEntriesToServer {
 		ZipFile alexaZIP = null;
 		ZipEntry alexaCSV = null;
 
-		System.setProperty("sun.net.spi.nameservice.nameservers", "8.8.8.8");
-		System.setProperty("sun.net.spi.nameservice.provider.1", "dns,sun");
+		/*System.setProperty("sun.net.spi.nameservice.nameservers", "8.8.8.8");
+		System.setProperty("sun.net.spi.nameservice.provider.1", "dns,sun");*/
 
 		try {
 			alexaZIP = new ZipFile("top-1m.csv.zip");
@@ -75,17 +75,17 @@ public class AddEntriesToServer {
 
 		InputStream in = alexaZIP.getInputStream(alexaCSV);
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
-		int internalLimit = 4000;
-		int internalStart = 24149;
+		int internalLimit = 215000;
+		int internalStart = 67591;
 
 		String line, host;
 		int i = 1;
 		long timeStart = System.currentTimeMillis() / 1000;
 
 		HttpClient httpClient = new HttpClient();
-		httpClient.start();
 		
 		while ((line = br.readLine()) != null && internalLimit > 0) {
+			httpClient.start();
 			host = line.split(",")[1].split("/")[0]; // 123,host.tld/some/more
 
 			if ((--internalStart) > 0) {
@@ -115,6 +115,7 @@ public class AddEntriesToServer {
 
 			internalLimit--;
 			i++;
+			httpClient.stop();
 		}
 		long timeEnd = System.currentTimeMillis() / 1000;
 		System.out.println("Adding " + (i - 1) + " hosts lasts "

@@ -31,6 +31,9 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import de.donotconnect.notary_cache.client.NCClient.TargetHost;
 import de.donotconnect.notary_cache.client.CacheStructures.DefaultEntry;
 import de.donotconnect.notary_cache.client.CacheStructures.ICache;
@@ -42,6 +45,8 @@ public class Cache {
 	private StringBuilder sCache;
 	private Configuration config;
 	private byte[] signature;
+	
+	private final static Logger log = LogManager.getLogger("Cache");
 
 	/*
 	 * --------------------------------------------------------------------------
@@ -74,7 +79,7 @@ public class Cache {
 		String line;
 
 		while ((line = br.readLine()) != null) {
-			cacheContents.append(line);
+			cacheContents.append(line+"\n");
 		}
 		br.close();
 		fr.close();
@@ -416,26 +421,33 @@ public class Cache {
 		this.config.config.clear();
 		this.cache.clear();
 
-		String[] cache = fullCache.split("\n");
+		String[] cache = fullCache.split("\\r?\\n");
+		log.debug("Cache has "+cache.length+" lines.");
 
 		sCache = new StringBuilder();
 		for (int i = 0; i < cache.length; i++) {
 			if (i == 0) { // Header
 
+				log.debug("_parseCache: Parsing cache header... ");
+				
 				_parseCacheHeader(cache[i]);
 				sCache.append(cache[i] + "\n");
 
 			} else if (i == cache.length - 1) { // Signature
 
+				log.debug("_parseCache: Parsing cache signature... ");
 				_parseCacheSignature(cache[i]);
 
 			} else {
 
+				//log.debug("_parseCache: Adding entry...");
+				
 				try {
 					this.cache.addEntry(DefaultEntry.fromString(cache[i]));
 					sCache.append(cache[i] + "\n");
 				} catch (NoSuchAlgorithmException | UnknownHostException e) {
 					e.printStackTrace();
+					log.debug("Failed to add entry: "+e);
 				}
 
 			}
@@ -445,6 +457,7 @@ public class Cache {
 	private void _parseCacheHeader(String header) {
 		String[] params = header.split(";");
 		if (params.length != 7) {
+			log.debug("Header is not correct. Length is "+params.length);
 			return;
 		}
 

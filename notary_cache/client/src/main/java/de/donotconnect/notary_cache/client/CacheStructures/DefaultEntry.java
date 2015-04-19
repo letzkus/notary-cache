@@ -8,7 +8,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class DefaultEntry implements Serializable {
+	
+	private final static Logger log = LogManager.getLogger("DefaultEntry");
 
 	public static DefaultEntry fromString(String e)
 			throws NoSuchAlgorithmException, UnknownHostException {
@@ -22,7 +27,8 @@ public class DefaultEntry implements Serializable {
 			entry = new DefaultEntry(ip, port, host, keyalgo);
 			if(elem.length>=5) {
 				String digests = elem[4];
-				entry.addDigests(digests.split(";"));
+				//log.debug("There are "+digests.split(",").length+" digests.");
+				entry.addDigests(digests.split(","));
 				if(elem.length==6) {
 					int roles = Integer.parseInt(elem[5]);
 					entry.setRoles(roles);
