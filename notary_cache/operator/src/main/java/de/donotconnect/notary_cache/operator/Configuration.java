@@ -181,7 +181,6 @@ public class Configuration implements IListener {
 				|| config.containsKey("external.hostname")
 				|| config.containsKey("instance.port")
 				|| config.containsKey("external.port")
-				|| config.containsKey("external.secure_port")
 				|| config.containsKey("crypto.pubKey") || config
 					.containsKey("internal.crypto.privKey"))) {
 			log.error("Configuration is invalid. Quitting.");

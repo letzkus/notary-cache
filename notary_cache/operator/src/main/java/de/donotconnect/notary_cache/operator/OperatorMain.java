@@ -158,7 +158,6 @@ public class OperatorMain extends AbstractHandler implements IListener {
 			// Build header
 			result.append(conf.getAttribute("external.ip") + ";"
 					+ conf.getAttribute("external.port") + ";"
-					+ conf.getAttribute("external.secure_port") + ";"
 					+ conf.getAttribute("external.hostname") + ";"
 					+ conf.getAttribute("cache.validity_start") + ";"
 					+ conf.getAttribute("cache.validity_end") + ";"
