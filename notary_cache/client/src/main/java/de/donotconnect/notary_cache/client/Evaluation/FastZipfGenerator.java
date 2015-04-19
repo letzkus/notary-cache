@@ -3,6 +3,7 @@ package de.donotconnect.notary_cache.client.Evaluation;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.TreeMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 
@@ -13,7 +14,7 @@ import java.util.TreeMap;
  *
  */
 class FastZipfGenerator {
-	private Random random = new Random(System.currentTimeMillis());
+	private Random random = ThreadLocalRandom.current();
 	private NavigableMap<Double, Integer> map;
 
 	FastZipfGenerator(int size, double skew) {
