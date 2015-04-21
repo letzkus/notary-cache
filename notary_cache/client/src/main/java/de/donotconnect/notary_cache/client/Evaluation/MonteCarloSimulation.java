@@ -4,19 +4,17 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class MonteCarloSimulation {
 
 	public static void main(String[] args) {
 
 		// Step 0: Define input
-		long users = 8000000; // Number of users
-		int hosts = 1000000; // Number of hosts on the internet
-		long requests = users * 1000; // Each user makes 100 requests
+		int hosts = 10000; // Number of hosts on the internet
+		long users = hosts * 8; // Number of users
+		long requests = users * 1000; // Each user makes 1000 requests
 		double tlsHosts = 0.4; // Fraction of hosts which are capable of TLS
-		double zipfExponent = 1.0; // Exponent for the Zipf Distribution
+		double zipfExponent = 0.7; // Exponent for the Zipf Distribution
 		double averageEntrySize = 204; // Average size of an entry in the cache
 		double historyFactor = 0.25; // hosts belonging to at least x percent of
 										// all users
@@ -29,13 +27,17 @@ public class MonteCarloSimulation {
 
 		// Step 1: Generation and Step 2: Computation
 		before = System.nanoTime();
-		HashMap<Long, Long> req = _threadedGenerateAndCorrelateRequests(
+		HashMap<Long, Long> req = _generateAndCorrelateRequests(
 				requests, (int) (hosts * tlsHosts), zipfExponent);
 		after = System.nanoTime();
 		System.out.println("Generation duration " + (after - before) / 1e6);
-
+		System.out.println("Sum of Requests: "
+				+ req.values().stream().reduce(0L, (a, b) -> a + b) + " to "
+				+ req.size() + " hosts");
 		// Step 3: Aggregating
 		before = System.nanoTime();
+
+		long statHosts = req.size();
 
 		// Calculate benefits with fixed number of entries in cache
 		double[] benefits = new double[hostsInCache.length];
@@ -46,6 +48,9 @@ public class MonteCarloSimulation {
 		// Calculate number of entries with given fraction of hosts in user
 		// caches
 		long remainingRequests = _filter(req, historyFactor, users);
+		System.out.println("After: Sum of Requests: "
+				+ req.values().stream().reduce(0L, (a, b) -> a + b) + " to "
+				+ req.size() + " hosts");
 
 		after = System.nanoTime();
 		System.out.println("Filtering duration " + (after - before) / 1e6);
@@ -55,12 +60,14 @@ public class MonteCarloSimulation {
 		System.out.println("Input: users=" + users + " hosts=" + hosts
 				+ " requests=" + requests + " tlsHosts=" + tlsHosts
 				+ " zipfExp=" + zipfExponent);
+		System.out.println("Distribution: hosts=" + statHosts + " ("
+				+ (statHosts / (hosts * tlsHosts)) * 100 + "%) ignored="
+				+ ((hosts * tlsHosts) - statHosts));
 		System.out.println("Number of entries for history factor "
 				+ historyFactor + ": " + req.size());
 		System.out.println("Size of cache: " + (req.size() * averageEntrySize)
 				/ 1000 + "kb");
-		System.out.println("Not in cache: "
-				+ (((int) (hosts * tlsHosts)) - req.size()));
+		System.out.println("Not in cache: " + (statHosts - req.size()));
 		System.out.println("Remaining requests: " + remainingRequests + " or "
 				+ ((double) remainingRequests / (double) requests) * 100 + "%");
 		System.out.println("Caching benefits: "
@@ -74,6 +81,15 @@ public class MonteCarloSimulation {
 					+ benefits[i]);
 	}
 
+	/**
+	 * Filters all hosts smaller than factor*users. Returns the number or
+	 * requests of the hosts that were filtered.
+	 * 
+	 * @param res
+	 * @param factor
+	 * @param users
+	 * @return
+	 */
 	private static long _filter(HashMap<Long, Long> res, double factor,
 			long users) {
 
@@ -102,6 +118,8 @@ public class MonteCarloSimulation {
 	private static double _calculateBenefits(HashMap<Long, Long> res,
 			int hostsInCache, long requests) {
 
+		// System.out.println("Req="+requests+" res.size()="+res.size()+" res="+res.toString());
+
 		ValueComparator bvc = new ValueComparator(res);
 		TreeMap<Long, Long> sortedMap = new TreeMap<Long, Long>(bvc);
 		sortedMap.putAll(res);
@@ -119,7 +137,6 @@ public class MonteCarloSimulation {
 		return result;
 	}
 
-	@SuppressWarnings("unused")
 	private static HashMap<Long, Long> _generateAndCorrelateRequests(long n,
 			int h, double zipfExp) {
 
@@ -142,61 +159,4 @@ public class MonteCarloSimulation {
 		return res;
 
 	}
-
-	private static HashMap<Long, Long> _threadedGenerateAndCorrelateRequests(
-			long n, int h, double zipfExp) {
-
-		HashMap<Long, Long> res = new HashMap<Long, Long>();
-
-		final int maxThreads = 20;
-		final int randsPerThread = 100000;
-
-		System.out.print("Generating: ");
-		for (long i = 0; i < n; i += randsPerThread * maxThreads) {
-
-			// Progress bar
-			if ((((double) i / n) * 100) % 10 == 0)
-				System.out.print(".");
-
-			ExecutorService executor = Executors.newFixedThreadPool(maxThreads);
-			long[][] tmp = new long[maxThreads][randsPerThread + 1];
-
-			FastZipfGenerator z1 = new FastZipfGenerator(h, zipfExp);
-
-			// Start threads
-			for (int j = 0; j < maxThreads; j++) {
-
-				final int tid = j;
-
-				final Runnable t = new Runnable() {
-
-					public void run() {
-						for (int z = 0; z < randsPerThread; z++)
-							tmp[tid][z] = z1.next();
-					}
-				};
-
-				executor.execute(t);
-
-			}
-
-			// 2. Wait for all threads to quit
-			executor.shutdown();
-			while (!executor.isTerminated()) {
-			}
-
-			// 3. Collect
-			for (int j = 0; j < maxThreads; j++) {
-				for (int z = 0; z < randsPerThread; z++) {
-					res.compute(tmp[j][z], (k, v) -> (v == null) ? 1 : v + 1);
-				}
-			}
-
-		}
-		System.out.println("done");
-
-		return res;
-
-	}
-
 }
