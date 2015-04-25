@@ -14,7 +14,7 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  */
 class FastZipfGenerator {
-	private Random random = ThreadLocalRandom.current();
+	private Random random = new Random(System.currentTimeMillis());
 	private NavigableMap<Double, Integer> map;
 
 	FastZipfGenerator(int size, double skew) {

@@ -9,76 +9,104 @@ public class MonteCarloSimulation {
 
 	public static void main(String[] args) {
 
-		// Step 0: Define input
-		int hosts = 10000; // Number of hosts on the internet
-		long users = hosts * 8; // Number of users
-		long requests = users * 1000; // Each user makes 1000 requests
-		double tlsHosts = 0.4; // Fraction of hosts which are capable of TLS
+		// Input
+		int hosts = 100000; // Number of hosts on the internet
+		long[] numberOfUsers = new long[] { (long) (hosts * 0.001),
+				(long) (hosts * 0.005), (long) (hosts * 0.01),
+				(long) (hosts * 0.05), (long) (hosts * 0.1),
+				(long) (hosts * 0.5), hosts * 1, hosts * 5, hosts * 10,
+				hosts * 50, hosts * 100 };
+
+		// Advanced Input
+		int reqPerHost = 1000; // Hosts per host
+		long requests = hosts * reqPerHost; // 1000 requests per host on average
+		double tlsHosts = 1; // Fraction of hosts which are capable of TLS
 		double zipfExponent = 0.7; // Exponent for the Zipf Distribution
-		double averageEntrySize = 204; // Average size of an entry in the cache
-		double historyFactor = 0.25; // hosts belonging to at least x percent of
-										// all users
+		double averageEntrySize = 204; // Average size of an entry
+		int outputMode = 4; // 0->debug, 1->entries, 2->benefits,
+							// 3->1+2, 4->remainingRequests*averageSize
+
+		// Time Measurements for each step
+		long[] durations = new long[3];
+
+		// Step 1: Generate Data
+		durations[0] = System.nanoTime();
+		HashMap<Long, Long> req = _generateAndCorrelateRequests(requests,
+				(int) (hosts * tlsHosts), zipfExponent);
+		durations[0] = (long) ((durations[0] - System.nanoTime()) / 1e6);
+
+		// Debug
+		System.out.println("[DEBUG] Start - Sum of Requests: "
+				+ req.values().stream().reduce(0L, (a, b) -> a + b) + " to "
+				+ req.size() + " hosts");
+
+		// Calculate benefits for given number of entries
 		int[] hostsInCache = { 100, 250, 500, 750, 1000, 2500, 5000, 7500,
 				10000 }; // number of hosts in cache
-
-		// Time Measurements
-		long before = 0;
-		long after = 0;
-
-		// Step 1: Generation and Step 2: Computation
-		before = System.nanoTime();
-		HashMap<Long, Long> req = _generateAndCorrelateRequests(
-				requests, (int) (hosts * tlsHosts), zipfExponent);
-		after = System.nanoTime();
-		System.out.println("Generation duration " + (after - before) / 1e6);
-		System.out.println("Sum of Requests: "
-				+ req.values().stream().reduce(0L, (a, b) -> a + b) + " to "
-				+ req.size() + " hosts");
-		// Step 3: Aggregating
-		before = System.nanoTime();
-
-		long statHosts = req.size();
-
-		// Calculate benefits with fixed number of entries in cache
-		double[] benefits = new double[hostsInCache.length];
 		for (int i = 0; i < hostsInCache.length; i++) {
-			benefits[i] = _calculateBenefits(req, hostsInCache[i], requests);
+			System.out.println(hostsInCache[i] + "\t"
+					+ _calculateBenefits(req, hostsInCache[i], requests));
+		}
+		System.out.println();
+
+		// Calculate average number of entries related to number of users
+		for (long users : numberOfUsers) {
+
+			// System.out.println("users=" + users + " users/hosts="
+			// + ((double) users / (double) hosts));
+
+			// Filter entries
+
+			HashMap<Long, Long> foundHosts = new HashMap<Long, Long>();
+			HashMap<Long, Long> remainingHosts = new HashMap<Long, Long>();
+
+			_filterUniform(req, users, foundHosts, remainingHosts);
+
+			long remainingRequests = remainingHosts.values().stream()
+					.reduce(0L, (a, b) -> a + b);
+
+			long savedRequests = foundHosts.values().stream()
+					.reduce(0L, (a, b) -> a + b);
+
+			if (outputMode == 0) // Debug
+				System.out
+						.println("#entries="
+								+ foundHosts.size()
+								+ "; savedRequests="
+								+ savedRequests
+								+ "; benefit="
+								+ ((double) savedRequests / ((double) (remainingRequests + savedRequests)))
+								* 100
+								+ "%; remainingRequests="
+								+ remainingRequests
+								+ "; remainingHosts="
+								+ remainingHosts.size()
+								+ "; loss="
+								+ ((double) remainingRequests / ((double) (remainingRequests + savedRequests)))
+								* 100 + "%; cacheSize=" + foundHosts.size()
+								* averageEntrySize);
+			if (outputMode == 1) // users entries
+				System.out.println(users + "\t" + foundHosts.size());
+			if (outputMode == 2) // users benefit
+				System.out
+						.println(users
+								+ "\t"
+								+ ((double) savedRequests / ((double) (remainingRequests + savedRequests))));
+			if (outputMode == 3)
+				System.out
+						.println(users
+								+ "\t"
+								+ foundHosts.size()
+								+ "\t"
+								+ ((double) savedRequests / ((double) (remainingRequests + savedRequests))));
+			if (outputMode == 4)
+				System.out.println(users + "\t"
+						//+ (remainingRequests * averageEntrySize) / 1024 / 1024
+						//+ "\t" + (savedRequests * averageEntrySize) / 1024
+						/// 1024 +
+						+ "\t" + (foundHosts.size()*averageEntrySize)/1024/1024);
 		}
 
-		// Calculate number of entries with given fraction of hosts in user
-		// caches
-		long remainingRequests = _filter(req, historyFactor, users);
-		System.out.println("After: Sum of Requests: "
-				+ req.values().stream().reduce(0L, (a, b) -> a + b) + " to "
-				+ req.size() + " hosts");
-
-		after = System.nanoTime();
-		System.out.println("Filtering duration " + (after - before) / 1e6);
-
-		// Result a:
-		System.out.println();
-		System.out.println("Input: users=" + users + " hosts=" + hosts
-				+ " requests=" + requests + " tlsHosts=" + tlsHosts
-				+ " zipfExp=" + zipfExponent);
-		System.out.println("Distribution: hosts=" + statHosts + " ("
-				+ (statHosts / (hosts * tlsHosts)) * 100 + "%) ignored="
-				+ ((hosts * tlsHosts) - statHosts));
-		System.out.println("Number of entries for history factor "
-				+ historyFactor + ": " + req.size());
-		System.out.println("Size of cache: " + (req.size() * averageEntrySize)
-				/ 1000 + "kb");
-		System.out.println("Not in cache: " + (statHosts - req.size()));
-		System.out.println("Remaining requests: " + remainingRequests + " or "
-				+ ((double) remainingRequests / (double) requests) * 100 + "%");
-		System.out.println("Caching benefits: "
-				+ (requests - remainingRequests) + " or "
-				+ ((double) (requests - remainingRequests) / (double) requests)
-				* 100 + "%");
-		System.out.println();
-		System.out.println("Caching benefits for fixed size caches: ");
-		for (int i = 0; i < hostsInCache.length; i++)
-			System.out.println(" " + hostsInCache[i] + " entries: "
-					+ benefits[i]);
 	}
 
 	/**
@@ -88,31 +116,22 @@ public class MonteCarloSimulation {
 	 * @param res
 	 * @param factor
 	 * @param users
+	 * @param foundHosts
 	 * @return
 	 */
-	private static long _filter(HashMap<Long, Long> res, double factor,
-			long users) {
+	private static void _filterUniform(HashMap<Long, Long> res, long users,
+			HashMap<Long, Long> foundHosts, HashMap<Long, Long> dismissedHosts) {
 
 		Iterator<Entry<Long, Long>> it = res.entrySet().iterator();
 
-		double limit = factor * users;
-		int i = 0;
-		long requests = 0;
-		int max = res.size();
-		System.out.print("Filtering: ");
 		while (it.hasNext()) {
-			if ((((double) i / (double) max) * 100) % 10 == 0)
-				System.out.print(".");
 			Entry<Long, Long> e = it.next();
-			if (e.getValue() < limit) {
-				requests += e.getValue();
-				it.remove();
+			if (e.getValue() < users) {
+				dismissedHosts.put(e.getKey(), e.getValue());
+			} else {
+				foundHosts.put(e.getKey(), e.getValue());
 			}
-			i++;
 		}
-		System.out.println("done");
-
-		return requests;
 	}
 
 	private static double _calculateBenefits(HashMap<Long, Long> res,
