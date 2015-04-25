@@ -5,6 +5,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -20,11 +22,13 @@ public class AddEntriesToServer {
 
 	public static void main(String[] args) throws Exception {
 
+		int ipType = 4;
+		
 		ZipFile alexaZIP = null;
 		ZipEntry alexaCSV = null;
 
-		/*System.setProperty("sun.net.spi.nameservice.nameservers", "8.8.8.8");
-		System.setProperty("sun.net.spi.nameservice.provider.1", "dns,sun");*/
+		System.setProperty("sun.net.spi.nameservice.nameservers", "8.8.8.8");
+		System.setProperty("sun.net.spi.nameservice.provider.1", "dns,sun");
 
 		try {
 			alexaZIP = new ZipFile("top-1m.csv.zip");
@@ -75,8 +79,8 @@ public class AddEntriesToServer {
 
 		InputStream in = alexaZIP.getInputStream(alexaCSV);
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
-		int internalLimit = 215000;
-		int internalStart = 67591;
+		int internalLimit = 650;
+		int internalStart = 0;
 
 		String line, host;
 		int i = 1;
@@ -96,7 +100,14 @@ public class AddEntriesToServer {
 			String ip = null;
 
 			try {
-				ip = InetAddress.getByName(host).getHostAddress();
+				InetAddress[] _ips = InetAddress.getAllByName(host);
+				for(InetAddress _ip : _ips) {
+					if(ipType == 4 && _ip instanceof Inet4Address) {
+						ip = _ip.getHostAddress();
+					}else if(ipType == 6 && _ip instanceof Inet6Address) {
+						ip = _ip.getHostAddress();
+					}
+				}
 			} catch (UnknownHostException e) {
 				try {
 					ip = InetAddress.getByName("www." + host).getHostAddress();
@@ -111,7 +122,11 @@ public class AddEntriesToServer {
 						.GET("http://z.donotconnect.de/.well-known/notary?hostname="
 								+ host + "&ip=" + ip);
 				System.out.println(".....done: " + resp.getContentAsString());
+			}else{
+				System.out.println(i + " - No IPv"+ipType+" Address available");
 			}
+			
+			Thread.sleep(100);
 
 			internalLimit--;
 			i++;
