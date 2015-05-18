@@ -1,6 +1,7 @@
 package de.donotconnect.notary_cache.client;
 
 import java.io.BufferedReader;
+
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -42,6 +43,13 @@ import de.donotconnect.notary_cache.client.CacheStructures.DefaultEntry;
 import de.donotconnect.notary_cache.client.CacheStructures.ICache;
 import de.donotconnect.notary_cache.client.CacheStructures.InMemoryCache;
 
+
+/**
+ * Cache structure for NCClient.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class Cache {
 	private ICache cache;
 	private StringBuilder sCache;

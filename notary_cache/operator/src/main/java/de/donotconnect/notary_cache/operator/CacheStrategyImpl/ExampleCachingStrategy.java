@@ -17,7 +17,14 @@ import de.donotconnect.notary_cache.operator.Interfaces.ICache;
 import de.donotconnect.notary_cache.operator.Interfaces.ICacheStrategy;
 import de.donotconnect.notary_cache.operator.Interfaces.DefaultEntry;
 
-public class SimpleCachingStrategy implements ICacheStrategy {
+/**
+ * 
+ * An example caching strategy, which does every operation in real time.
+ * 
+ * @author fabianletzkus
+ *
+ */
+public class ExampleCachingStrategy implements ICacheStrategy {
 
 	private ICache c;
 	private EventMgr e;
@@ -158,7 +165,7 @@ public class SimpleCachingStrategy implements ICacheStrategy {
 	}
 
 	/**
-	 * Operations
+	 * Returns the cache as a string.
 	 */
 	public String getCacheAsString(char firstDelim, char secondDelim) {
 

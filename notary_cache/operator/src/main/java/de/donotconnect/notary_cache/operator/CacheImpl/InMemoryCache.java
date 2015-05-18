@@ -12,6 +12,13 @@ import de.donotconnect.notary_cache.operator.Configuration;
 import de.donotconnect.notary_cache.operator.Interfaces.ICache;
 import de.donotconnect.notary_cache.operator.Interfaces.DefaultEntry;
 
+/**
+ * 
+ * InMemoryCache which makes use of MapDB to store cache information.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class InMemoryCache implements ICache {
 
 	DB db;
@@ -74,9 +81,12 @@ public class InMemoryCache implements ICache {
 	@Override
 	public void open() {
 		Configuration conf = Configuration.getInstance();
-		String base=System.getProperty("basedir");
-		if(base!=null)
-			this.db = DBMaker.newFileDB(new File(conf.getAttribute("cache.directory")+"/cache.db")).make();
+		String base = System.getProperty("basedir");
+		if (base != null)
+			this.db = DBMaker
+					.newFileDB(
+							new File(conf.getAttribute("cache.directory")
+									+ "/cache.db")).make();
 		else
 			this.db = DBMaker.newFileDB(new File("cache.db")).make();
 		if (!conf.getAttribute("cache.entry_lifetime").equals("")

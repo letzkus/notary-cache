@@ -5,8 +5,6 @@ import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.Locale;
 
 import org.apache.logging.log4j.LogManager;
@@ -22,6 +20,14 @@ import org.mapdb.DBMaker;
 
 import de.donotconnect.notary_cache.operator.Interfaces.IListener;
 
+/**
+ * 
+ * HwMonitor monitors various hardware parameters and publishes them via
+ * EventMgr to other modules.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class HwMonitor extends Thread implements IListener {
 
 	private boolean quit = false;

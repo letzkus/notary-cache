@@ -39,6 +39,13 @@ import de.donotconnect.notary_cache.operator.Interfaces.DefaultEntry;
 import de.donotconnect.notary_cache.operator.Interfaces.ICacheStrategy;
 import de.donotconnect.notary_cache.operator.Interfaces.IListener;
 
+/**
+ * DefaultNotary provides an implementation of a notary, which checks target
+ * hosts in real time. No examination of a target host is implemented, yet.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class DefaultNotary extends AbstractNotary implements IListener {
 
 	private EventMgr e;
@@ -49,11 +56,20 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	public static int maxThreads = 100;
 	private static int numThreads = 0;
 
+	/**
+	 * Default constructor.
+	 */
 	public DefaultNotary() {
 		e = EventMgr.getInstance();
 		e.registerEventListener("new-request", this);
 	}
 
+	/**
+	 * Class to extract certificates during connection establishment.
+	 * 
+	 * @author fabianletzkus
+	 *
+	 */
 	public class CertificateExtractor implements X509TrustManager {
 
 		private ArrayList<String> digests = new ArrayList<String>();
@@ -71,6 +87,11 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 			}
 		}
 
+		/**
+		 * Returns the collected certificates as digests.
+		 * 
+		 * @return digests of the certificates
+		 */
 		public String[] getDigests() {
 
 			String[] result = new String[digests.size()];
@@ -79,10 +100,16 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 			return result;
 		}
 
+		/**
+		 * see parent class
+		 */
 		public void checkClientTrusted(final X509Certificate[] chain,
 				final String authType) {
 		}
 
+		/**
+		 * see parent class
+		 */
 		public void checkServerTrusted(final X509Certificate[] chain,
 				final String authType) throws CertificateException {
 			for (X509Certificate c : chain) {
@@ -94,6 +121,9 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 			}
 		}
 
+		/**
+		 * see parent class
+		 */
 		public X509Certificate[] getAcceptedIssuers() {
 			return null;
 		}
@@ -218,7 +248,7 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 	@Override
 	public String examRolesOnTargetHost() {
 		// TODO Auto-generated method stub
-		return null;
+		return "0";
 	}
 
 	@Override
@@ -273,10 +303,15 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 
 				final Runnable request = new Runnable() {
 					public void run() {
-						// EventMgr e = EventMgr.getInstance();
-						e.newEvent("new-request " + finalIp + " " + port + " "
-								+ finalHost + " " + keyalgo);
-						numThreads--;
+						numThreads++;
+						try {
+							// EventMgr e = EventMgr.getInstance();
+							e.newEvent("new-request " + finalIp + " " + port
+									+ " " + finalHost + " " + keyalgo);
+						} catch (Exception e) {
+						} finally {
+							numThreads--;
+						}
 					}
 				};
 
@@ -285,7 +320,6 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 							+ ") Sending event: new-request " + ip + " " + port
 							+ " " + hostname + " " + keyalgo);
 					(new Thread(request)).start();
-					numThreads++;
 				} else {
 					log.debug("Sending event: new-request " + ip + " " + port
 							+ " " + hostname + " " + keyalgo);
@@ -411,6 +445,9 @@ public class DefaultNotary extends AbstractNotary implements IListener {
 
 				}
 			}
+		}
+		if (evnt.startsWith("hwmon-notify")) {
+
 		}
 	}
 }

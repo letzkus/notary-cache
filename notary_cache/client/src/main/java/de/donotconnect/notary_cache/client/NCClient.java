@@ -22,12 +22,25 @@ import org.apache.logging.log4j.Logger;
 
 import de.donotconnect.notary_cache.client.CacheStructures.DefaultEntry;
 
+/**
+ * 
+ * NCClient which provides functionality to automatically check caches from
+ * NotaryCache.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class NCClient {
 
 	private final static Logger log = LogManager.getLogger("NCClient");
 
 	public static NCClient instance = null;
 
+	/**
+	 * returns an Instance of NCClient
+	 * 
+	 * @return Instance of NCClient
+	 */
 	public static NCClient getInstance() {
 		if (instance == null)
 			instance = new NCClient();
@@ -38,10 +51,18 @@ public class NCClient {
 	private String ownLocation = null;
 	public String NCCLIENT_HASH_ALGORITHM = "SHA-256";
 
+	/**
+	 * Simple Constructor to create an object without any caches
+	 */
 	public NCClient() {
 		ownLocation = getOwnLocation();
 	}
 
+	/**
+	 * Constructor consuming an array of existing caches
+	 * 
+	 * @param caches
+	 */
 	public NCClient(Cache[] caches) {
 
 		ownLocation = getOwnLocation();
@@ -51,11 +72,24 @@ public class NCClient {
 
 	}
 
+	/**
+	 * Adds an existing cache to the NCClient
+	 * 
+	 * @param cache
+	 */
 	public void addCache(Cache cache) {
 		if (cache.isValid())
 			this.activeCaches.add(cache);
 	}
 
+	/**
+	 * Loads existing caches from a directory to the NCClient
+	 * 
+	 * @param cacheLocation
+	 *            The location to find the cache files
+	 * @throws IOException
+	 *             If errors occure while reading files
+	 */
 	public void addCachesFromDirectory(String cacheLocation) throws IOException {
 
 		File loc = new File(cacheLocation);
@@ -73,7 +107,7 @@ public class NCClient {
 											cacheFile.getAbsolutePath()
 													.length() - 6)
 									+ ".config");
-							log.debug("Successfully loaded cache "+cacheFile);
+							log.debug("Successfully loaded cache " + cacheFile);
 							this.addCache(c);
 						}
 					} catch (CacheException e) {
@@ -87,10 +121,25 @@ public class NCClient {
 		}
 	}
 
+	/**
+	 * Returns the NCTrustManager object for the given configuration
+	 * 
+	 * @return
+	 */
 	public X509TrustManager getX509TrustManager() {
 		return new NCTrustManager(this);
 	}
 
+	/**
+	 * Retrieves new caches and updates existing caches.
+	 * 
+	 * @param depth
+	 *            The number of repetitions of this process
+	 * @param updateExistingCaches
+	 *            Flag indicating whether to update the cache
+	 * @param useNotaryCache
+	 *            Flag indicating the use of Notary Cache during retrieval
+	 */
 	public void updateClient(int depth, boolean updateExistingCaches,
 			boolean useNotaryCache) {
 
@@ -117,6 +166,11 @@ public class NCClient {
 		}
 	}
 
+	/**
+	 * Updates the client with a list of host, for example from history.
+	 * 
+	 * @param hosts
+	 */
 	public void updateClient(List<String> hosts) {
 		for (String host : hosts) {
 			InetAddress inethost;
@@ -130,6 +184,11 @@ public class NCClient {
 		}
 	}
 
+	/**
+	 * Returns true, if the NCClient instance contains active caches.
+	 * 
+	 * @return
+	 */
 	public boolean hasCaches() {
 		return this.activeCaches.size() > 0;
 	}
@@ -190,7 +249,7 @@ public class NCClient {
 			BufferedReader in = new BufferedReader(new InputStreamReader(
 					whatismyip.openStream()));
 			String ip = in.readLine();
-			return ip;
+			return this.getLocation(ip);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -198,7 +257,20 @@ public class NCClient {
 		return "??";
 	}
 
-	public Cache[] selectAppropriateCaches(byte[] ip) {
+	/**
+	 * Select appropriate caches based on the ip. Moreover, the process can be
+	 * manipulated by the flags.
+	 * 
+	 * @param ip
+	 *            The ip of the target server
+	 * @param ownLocation
+	 *            Flag indicating the use of the clients location
+	 * @param targetLocation
+	 *            Flag indicating the use of the targets location
+	 * @return A list of appropriate caches from all available caches
+	 */
+	public Cache[] selectAppropriateCaches(byte[] ip, boolean ownLocation,
+			boolean targetLocation) {
 
 		HashSet<Cache> appropriateCaches = new HashSet<Cache>();
 
@@ -213,8 +285,20 @@ public class NCClient {
 				if (loc == null || loc.equals("")) {
 					loc = this.getLocation(c.getConfig("header.ip"));
 				}
-				if (!loc.equals(ownLocation) && !loc.equals(locTarget)) {
-					appropriateCaches.add(c);
+				if (ownLocation) {
+					if (!loc.equals(this.ownLocation)) {
+						if (targetLocation) {
+							if (!loc.equals(locTarget))
+								appropriateCaches.add(c);
+						} else
+							appropriateCaches.add(c);
+					}
+				} else {
+					if (targetLocation) {
+						if (!loc.equals(locTarget))
+							appropriateCaches.add(c);
+					} else
+						appropriateCaches.add(c);
 				}
 			}
 

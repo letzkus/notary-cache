@@ -16,12 +16,18 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
 import de.donotconnect.notary_cache.operator.CacheImpl.InMemoryCache;
-import de.donotconnect.notary_cache.operator.CacheStrategyImpl.SimpleCachingStrategy;
+import de.donotconnect.notary_cache.operator.CacheStrategyImpl.ExampleCachingStrategy;
 import de.donotconnect.notary_cache.operator.Interfaces.ICache;
 import de.donotconnect.notary_cache.operator.Interfaces.ICacheStrategy;
 import de.donotconnect.notary_cache.operator.Interfaces.IListener;
 import de.donotconnect.notary_cache.operator.NotaryImpl.DefaultNotary;
 
+/**
+ * Main class for the operator.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class OperatorMain extends AbstractHandler implements IListener {
 
 	public static final int _NOTARY_CACHE_VERSION_ = 1;
@@ -52,7 +58,7 @@ public class OperatorMain extends AbstractHandler implements IListener {
 		 * Initialize Cache Elements
 		 */
 		this.cache = new InMemoryCache();
-		this.cachingStrategy = new SimpleCachingStrategy();
+		this.cachingStrategy = new ExampleCachingStrategy();
 		this.notary = new DefaultNotary();
 
 		/**
@@ -62,6 +68,9 @@ public class OperatorMain extends AbstractHandler implements IListener {
 		this.evntMgr.registerEventListener("hwmon-notify", this);
 	}
 
+	/**
+	 * Start the operator and its connected modules.
+	 */
 	public void startOperator() {
 		this.hwmon.start();
 		this.server.start();
@@ -69,6 +78,9 @@ public class OperatorMain extends AbstractHandler implements IListener {
 		this.cachingStrategy.manage(this.cache);
 	}
 
+	/**
+	 * Stops the operator.
+	 */
 	public void stopOperator() {
 		server.stop();
 	}
@@ -129,6 +141,9 @@ public class OperatorMain extends AbstractHandler implements IListener {
 		}
 	}
 
+	/**
+	 * Request handling.
+	 */
 	@Override
 	public void handle(String target, Request baseRequest,
 			HttpServletRequest req, HttpServletResponse resp)

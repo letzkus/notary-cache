@@ -17,9 +17,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
-public class EasyClient {
+public class ExampleClient {
 	public static void main(String[] args) throws NoSuchAlgorithmException,
 			KeyManagementException, UnknownHostException, IOException {
 

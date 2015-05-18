@@ -11,6 +11,14 @@ import org.apache.logging.log4j.Logger;
 
 import de.donotconnect.notary_cache.operator.Interfaces.IListener;
 
+/**
+ * 
+ * EventMgr provides methods for communication and message exchange between
+ * different modules of the operator.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class EventMgr extends Thread implements IListener {
 
 	private HashMap<String, ArrayList<IListener>> eventListeners = new HashMap<String, ArrayList<IListener>>();
@@ -25,14 +33,21 @@ public class EventMgr extends Thread implements IListener {
 		return EventMgr.instance;
 	}
 
-	public void registerEventListener(String cmd, IListener listener) {
+	/**
+	 * Registers an event with a listener. The listener must implement the
+	 * IListener-interface.
+	 * 
+	 * @param event
+	 * @param listener
+	 */
+	public void registerEventListener(String event, IListener listener) {
 		ArrayList<IListener> l;
-		if (this.eventListeners.containsKey(cmd))
-			l = this.eventListeners.get(cmd);
+		if (this.eventListeners.containsKey(event))
+			l = this.eventListeners.get(event);
 		else
 			l = new ArrayList<IListener>();
 		l.add(listener);
-		this.eventListeners.put(cmd, l);
+		this.eventListeners.put(event, l);
 	}
 
 	private void processEvent(String fullEventCode) {
@@ -47,10 +62,19 @@ public class EventMgr extends Thread implements IListener {
 		}
 	}
 
+	/**
+	 * Issues a new event to the system.
+	 * 
+	 * @param eventcode
+	 *            Message to be issued.
+	 */
 	public void newEvent(String eventcode) {
 		this.processEvent(eventcode);
 	}
 
+	/**
+	 * Starts a interactive session to manually issue events.
+	 */
 	public void interactive() {
 		this.start();
 	}

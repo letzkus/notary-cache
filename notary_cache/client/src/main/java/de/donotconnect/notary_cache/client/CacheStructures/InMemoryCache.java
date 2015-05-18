@@ -6,18 +6,22 @@ import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.HTreeMap;
 
+/**
+ * Example implementation for a cache structure based on MapDB.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class InMemoryCache implements ICache {
 
 	DB db;
 	HTreeMap<String, DefaultEntry> cache;
-	
+
+	/**
+	 * Creates a new cache which only resides in memory.
+	 */
 	public InMemoryCache() {
 		this.open();
-	}
-
-	public InMemoryCache(DB db, HTreeMap<String, DefaultEntry> c) {
-		this.db = db;
-		this.cache = c;
 	}
 
 	@Override
@@ -70,7 +74,8 @@ public class InMemoryCache implements ICache {
 		this.db = DBMaker.newMemoryDB().make();
 		this.cache = db.createHashMap("cachestruct").makeOrGet();
 	}
-	
+
+	@Override
 	public void clear() {
 		this.cache.clear();
 	}

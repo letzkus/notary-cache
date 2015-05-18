@@ -28,10 +28,22 @@ import org.mapdb.HTreeMap;
 
 import de.donotconnect.notary_cache.operator.Interfaces.IListener;
 
+/**
+ * Configuration for NotaryCache Operator
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class Configuration implements IListener {
 
 	private static Configuration instance = null;
 
+	/**
+	 * Configuration is a singleton and must thus be created using
+	 * getInstance();
+	 * 
+	 * @return
+	 */
 	public static synchronized Configuration getInstance() {
 		if (Configuration.instance == null) {
 			Configuration.instance = new Configuration();
@@ -44,7 +56,7 @@ public class Configuration implements IListener {
 	HTreeMap<String, String> config;
 	private final static Logger log = LogManager.getLogger("Configuration");
 
-	public Configuration() {
+	private Configuration() {
 
 		this.e = EventMgr.getInstance();
 
@@ -72,6 +84,12 @@ public class Configuration implements IListener {
 		this.e.registerEventListener("cache-issued", this);
 	}
 
+	/**
+	 * Returns the value for the given attribute key.
+	 * 
+	 * @param attr
+	 * @return
+	 */
 	public String getAttribute(String attr) {
 		if (attr.startsWith("internal.")) {
 			log.info("Invalid configuration item retrieval.");
@@ -80,6 +98,12 @@ public class Configuration implements IListener {
 		return config.get(attr);
 	}
 
+	/**
+	 * Sets the value for a given attribute.
+	 * 
+	 * @param attr
+	 * @param value
+	 */
 	public void setAttribute(String attr, String value) {
 		if (config.containsKey(attr))
 			config.remove(attr);
@@ -87,6 +111,9 @@ public class Configuration implements IListener {
 		db.commit();
 	}
 
+	/**
+	 * React upon events. This method is usually not called by a user.
+	 */
 	public void doAction(String evnt) {
 		log.debug("Received event: " + evnt);
 		if (evnt.startsWith("config-reload")) {
@@ -95,9 +122,9 @@ public class Configuration implements IListener {
 		if (evnt.startsWith("config-generatePK")) {
 			this.generatePK();
 		}
-		if(evnt.startsWith("set-keysize")) {
+		if (evnt.startsWith("set-keysize")) {
 			String[] event = evnt.split(" ");
-			if(event.length==2){
+			if (event.length == 2) {
 				this.setAttribute("config.keysize", event[1]);
 				log.debug("Changed keysize. Sending config-regeneratePK.");
 				this.e.newEvent("config-regeneratePK");
@@ -232,6 +259,13 @@ public class Configuration implements IListener {
 		}
 	}
 
+	/**
+	 * Creates a signature for the given string.
+	 * 
+	 * @param tosign
+	 *            String to sign
+	 * @return The signature of the string
+	 */
 	public String sign(String tosign) {
 		byte[] decodedKey = Base64.getDecoder().decode(
 				config.get("internal.crypto.privKey"));
@@ -257,6 +291,10 @@ public class Configuration implements IListener {
 		return null;
 	}
 
+	/**
+	 * Returns the configuration as a string, e.g. for the notary-cache-config interface.
+	 * @return
+	 */
 	public String getConfigAsString() {
 		StringBuffer sb = new StringBuffer();
 

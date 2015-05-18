@@ -6,10 +6,23 @@ import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
+/**
+ * 
+ * NotaryCache integrates the jetty server to provide a interface for others to
+ * connect.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class Server {
 
 	org.eclipse.jetty.server.Server jetty;
 
+	/**
+	 * Starts the integrated jetty server.
+	 * 
+	 * @param op
+	 */
 	public Server(OperatorMain op) {
 
 		try {
@@ -35,13 +48,13 @@ public class Server {
 			/**
 			 * Initialize jetty
 			 */
-	        QueuedThreadPool threadPool = new QueuedThreadPool();
-	        threadPool.setMaxThreads(500);
+			QueuedThreadPool threadPool = new QueuedThreadPool();
+			threadPool.setMaxThreads(500);
 			this.jetty = new org.eclipse.jetty.server.Server(threadPool);
 			ServerConnector http = new ServerConnector(this.jetty);
-	        http.setIdleTimeout(200);		
-	        http.setHost(conf.getAttribute("instance.ip"));
-	        http.setPort(Integer.parseInt(conf.getAttribute("instance.port")));
+			http.setIdleTimeout(200);
+			http.setHost(conf.getAttribute("instance.ip"));
+			http.setPort(Integer.parseInt(conf.getAttribute("instance.port")));
 			this.jetty.addConnector(http);
 			this.jetty.setHandler(contextHandlerList);
 

@@ -8,13 +8,23 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
+/**
+ * 
+ * DefaultEntry describes the entry of a cache.
+ * 
+ * @author fabianletzkus
+ *
+ */
 public class DefaultEntry implements Serializable {
-	
-	private final static Logger log = LogManager.getLogger("DefaultEntry");
 
+	/**
+	 * Returns a new DefaultEntry object based on the provided string
+	 * 
+	 * @param e
+	 * @return DefaultEntry instance for this string
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnknownHostException
+	 */
 	public static DefaultEntry fromString(String e)
 			throws NoSuchAlgorithmException, UnknownHostException {
 		DefaultEntry entry = null;
@@ -25,11 +35,11 @@ public class DefaultEntry implements Serializable {
 			String host = elem[2];
 			String keyalgo = elem[3];
 			entry = new DefaultEntry(ip, port, host, keyalgo);
-			if(elem.length>=5) {
+			if (elem.length >= 5) {
 				String digests = elem[4];
-				//log.debug("There are "+digests.split(",").length+" digests.");
+				// log.debug("There are "+digests.split(",").length+" digests.");
 				entry.addDigests(digests.split(","));
-				if(elem.length==6) {
+				if (elem.length == 6) {
 					int roles = Integer.parseInt(elem[5]);
 					entry.setRoles(roles);
 				}
@@ -46,6 +56,16 @@ public class DefaultEntry implements Serializable {
 	private ArrayList<String> digests = new ArrayList<String>();
 	private int roles = 0;
 
+	/**
+	 * Constructor for a DefaultEntry instance
+	 * 
+	 * @param ip
+	 * @param port
+	 * @param hostname
+	 * @param keyalgo
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnknownHostException
+	 */
 	public DefaultEntry(byte[] ip, int port, String hostname, String keyalgo)
 			throws NoSuchAlgorithmException, UnknownHostException {
 		this.host = InetAddress.getByAddress(hostname, ip);
