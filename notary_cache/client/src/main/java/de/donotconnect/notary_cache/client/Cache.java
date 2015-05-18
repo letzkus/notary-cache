@@ -11,6 +11,7 @@ import java.nio.charset.Charset;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyManagementException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PublicKey;
@@ -18,8 +19,11 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
+
+//import org.bouncycastle.util.encoders.Base64;
+
 import java.util.Base64;
 import java.util.Random;
 
@@ -34,28 +38,24 @@ import javax.net.ssl.X509TrustManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import de.donotconnect.notary_cache.client.NCClient.TargetHost;
 import de.donotconnect.notary_cache.client.CacheStructures.DefaultEntry;
 import de.donotconnect.notary_cache.client.CacheStructures.ICache;
 import de.donotconnect.notary_cache.client.CacheStructures.InMemoryCache;
 
 public class Cache {
-	private String ident = null;
 	private ICache cache;
 	private StringBuilder sCache;
 	private Configuration config;
 	private byte[] signature;
-	
+
 	private final static Logger log = LogManager.getLogger("Cache");
 
 	/*
 	 * --------------------------------------------------------------------------
-	 * ------------------------------------------------------------------------
 	 * 
 	 * STATIC FUNCTIONS
 	 * 
 	 * --------------------------------------------------------------------------
-	 * ------------------------------------------------------------------------
 	 */
 
 	/**
@@ -69,9 +69,10 @@ public class Cache {
 	 * @return A cache object containing the cache.
 	 * @throws IOException
 	 *             if cache could not be opened.
+	 * @throws CacheException
 	 */
-	public static Cache fromFile(String cacheId, String filename)
-			throws IOException {
+	public static Cache fromFile(String filename) throws IOException,
+			CacheException {
 
 		FileReader fr = new FileReader(filename);
 		StringBuffer cacheContents = new StringBuffer();
@@ -79,40 +80,38 @@ public class Cache {
 		String line;
 
 		while ((line = br.readLine()) != null) {
-			cacheContents.append(line+"\n");
+			cacheContents.append(line + "\n");
 		}
 		br.close();
 		fr.close();
 
 		Cache c = null;
-		c = new Cache(cacheId, cacheContents.toString());
+		c = new Cache(cacheContents.toString());
 
 		return c;
 	}
 
 	/*
 	 * --------------------------------------------------------------------------
-	 * ------------------------------------------------------------------------
 	 * 
 	 * CONSTRUCTORS
 	 * 
 	 * --------------------------------------------------------------------------
-	 * ------------------------------------------------------------------------
 	 */
 
 	/**
-	 * Constructs a new cache object from arbitrary input.
+	 * Constructs a new cache object from arbitrary input. No connection is
+	 * established.
 	 * 
 	 * @param notaryCacheId
 	 *            the id which uniquely identifies the cache
 	 * @param fullCache
 	 *            string containing the whole cache.
+	 * @throws CacheException
 	 */
-	public Cache(String notaryCacheId, String fullCache) {
-		
-		this.ident = notaryCacheId;
-		
-		_parseCache(notaryCacheId, fullCache);
+	public Cache(String fullCache) throws CacheException {
+
+		_parseCache(fullCache);
 	}
 
 	/**
@@ -133,10 +132,8 @@ public class Cache {
 	 *            cache.
 	 * @throws CacheException
 	 */
-	public Cache(String notaryCacheId, InetAddress host, int port,
-			boolean useNotaryCache) throws CacheException {
-		
-		this.ident = notaryCacheId;
+	public Cache(InetAddress host, int port, boolean useNotaryCache)
+			throws CacheException {
 
 		try {
 
@@ -144,76 +141,9 @@ public class Cache {
 			this.config.setAttribute("header.ip", host.getHostAddress());
 			this.config.setAttribute("header.port", String.valueOf(port));
 			this.config.setAttribute("header.hostname", host.getHostName());
-			gatherConfiguration(false);
 
 			// Choose potential random replicate
-			boolean replicate = false;
-			String replicatesAttr = this.config
-					.getAttribute("config.replicates.uri");
-			if (!replicatesAttr.equals("")) {
-				float r = Float.parseFloat(this.config
-						.getAttribute("config.replicates.probability")) * 10;
-				Random rand = new Random();
-				if (r < rand.nextInt(100)) {
-					String[] replicates = replicatesAttr.split(",");
-					int idx = rand.nextInt(replicates.length);
-					if (replicates[idx].contains(":")) {
-						host = InetAddress
-								.getByName(replicates[idx].split(":")[0]);
-						port = Integer.parseInt(replicates[idx].split(":")[1]);
-					} else {
-						host = InetAddress.getByName(replicates[idx]);
-						port = 80;
-					}
-					replicate = true;
-				}
-			}
-
-			// Get cache from host
-			SSLSocket socket = null;
-
-			final SSLContext sslContext = SSLContext.getInstance("TLS");
-			if (useNotaryCache) {
-				NCClient client = NCClient.getInstance();
-				TargetHost t = client.createTargetHost(host.getAddress(), port,
-						host.getHostName());
-				X509TrustManager cacheTrustManager = client
-						.getX509TrustManager(t);
-				sslContext.init(null, new TrustManager[] { cacheTrustManager },
-						SecureRandom.getInstanceStrong());
-			} else {
-				sslContext.init(null, null, SecureRandom.getInstanceStrong());
-			}
-			socket = (SSLSocket) sslContext.getSocketFactory().createSocket(
-					host, port);
-			SSLParameters p = new SSLParameters();
-			ArrayList<SNIServerName> hostnames = new ArrayList<SNIServerName>();
-			hostnames.add(new SNIHostName(host.getHostAddress()));
-			p.setServerNames(hostnames);
-			socket.setSSLParameters(p);
-			socket.startHandshake();
-			PrintWriter pw = new PrintWriter(socket.getOutputStream());
-			if (replicate) {
-				String origIP = this.config.getAttribute("header.ip");
-				String origPort = this.config.getAttribute("header.port");
-				pw.println("GET /.well-known/notary-cache-replicate/" + origIP
-						+ "/" + origPort + " HTTP/1.1");
-			} else {
-				pw.println("GET /.well-known/notary-cache HTTP/1.1");
-			}
-			pw.println("Host: " + host.getHostName());
-			pw.println("");
-			pw.flush();
-			BufferedReader br = new BufferedReader(new InputStreamReader(
-					socket.getInputStream()));
-			String recv;
-			StringBuffer sb = new StringBuffer();
-			while ((recv = br.readLine()) != null)
-				sb.append(recv);
-			br.close();
-
-			// Create cache
-			_parseCache(notaryCacheId, sb.toString());
+			this.update(useNotaryCache);
 
 		} catch (IOException | NoSuchAlgorithmException
 				| KeyManagementException e) {
@@ -223,12 +153,10 @@ public class Cache {
 
 	/*
 	 * --------------------------------------------------------------------------
-	 * ------------------------------------------------------------------------
 	 * 
 	 * PUBLIC METHODS
 	 * 
 	 * --------------------------------------------------------------------------
-	 * ------------------------------------------------------------------------
 	 */
 
 	/**
@@ -239,14 +167,19 @@ public class Cache {
 	 */
 	public boolean isValid() {
 
-		long now = System.currentTimeMillis();
+		long now = System.currentTimeMillis() / 1000;
 
 		// Public Key Validity
-		String sPublicKey = this.config.getAttribute("config.publicKey");
+		String sPublicKey = this.config.getAttribute("config.publickey");
 		String pkValidity = this.config
-				.getAttribute("config.publicKey.validity");
-		if (sPublicKey != null
+				.getAttribute("config.publickey.validity");
+		if (sPublicKey == null
 				|| (pkValidity != null && now > Long.parseLong(pkValidity))) {
+
+			log.debug("Cache is not valid: (" + (sPublicKey == null)
+					+ " != false && " + now + " > "
+					+ Long.parseLong(pkValidity) + ")");
+
 			return false;
 		}
 
@@ -254,27 +187,56 @@ public class Cache {
 		if (now < Long.parseLong(this.config
 				.getAttribute("header.validity_start"))
 				&& now > Long.parseLong(this.config
-						.getAttribute("header.validity_end")))
+						.getAttribute("header.validity_end"))) {
+			log.debug("Cache is outside its validity.");
 			return false;
+		}
 
 		// Signature Validity
-		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(Base64
-				.getDecoder().decode(sPublicKey));
+		X509EncodedKeySpec keySpec = new X509EncodedKeySpec(Base64.getDecoder().decode(sPublicKey));
 		KeyFactory fact;
 		try {
 			fact = KeyFactory.getInstance("RSA");
-
 			PublicKey pubKey = fact.generatePublic(keySpec);
+			
+			MessageDigest md;
+			String digest = null;
+			// Calculate digest
+			try {
+				md = MessageDigest.getInstance(this.config
+						.getAttribute("crypto.hashalgo"));
+				md.update(sCache.toString().getBytes(
+						Charset.forName(this.config
+								.getAttribute("cache.string_encoding"))));
+				digest = (new java.math.BigInteger(1, md
+						.digest())).toString(16);
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			if(digest==null)
+				return false;
+			
 			Signature verifier = Signature.getInstance(
 					config.getAttribute("crypto.signalgo"), "BC");
 			verifier.initVerify(pubKey);
-			verifier.update(sCache.toString().getBytes(
+			verifier.update(digest.getBytes(
 					Charset.forName(this.config
 							.getAttribute("cache.string_encoding"))));
-			return verifier.verify(this.signature);
+			boolean result = verifier.verify(this.signature);
+			if (!result){
+				log.debug("Cache Signature was not valid: ");
+				log.debug("- Public Key: "+sPublicKey);
+				log.debug("- Signature: "+Base64.getDecoder().decode(this.signature));
+				log.debug("- Digest: ");
+			}
+			return result;
 		} catch (NoSuchAlgorithmException | SignatureException
 				| InvalidKeyException | NoSuchProviderException
-				| InvalidKeySpecException e) {
+				| InvalidKeySpecException | IllegalArgumentException e) {
+			log.debug("Cache is not valid, because some exception was thrown: "
+					+ e);
 			return false;
 		}
 	}
@@ -313,13 +275,14 @@ public class Cache {
 	}
 
 	/**
-	 * Gathers the configuration from the information given in the cache.
+	 * Gathers the configuration from the information given in the cache using
+	 * TLS connection to NotaryCache host.
 	 * 
 	 * @param useNotaryCache
 	 *            boolean indicating the use of NotaryCache to validate received
 	 *            certificates
 	 */
-	public void gatherConfiguration(boolean useNotaryCache) {
+	public void updateConfig(boolean useNotaryCache) {
 		/**
 		 * version=1 contact= pgpid= notary.protocol=Default replicates.uri=
 		 * replicates.probability= publickey= publickey.validity=
@@ -332,9 +295,10 @@ public class Cache {
 		try {
 
 			NCClient client = NCClient.getInstance();
-			TargetHost t = client.createTargetHost(InetAddress.getByName(ip)
-					.getAddress(), port, hostname);
-			X509TrustManager cacheTrustManager = client.getX509TrustManager(t);
+			X509TrustManager cacheTrustManager = client.getX509TrustManager();
+
+			((NCTrustManager) cacheTrustManager).update(
+					InetAddress.getByName(ip).getAddress(), port, hostname);
 
 			final SSLContext sslContext = SSLContext.getInstance("TLS");
 			if (useNotaryCache)
@@ -359,6 +323,8 @@ public class Cache {
 					socket.getInputStream()));
 			_parseConfig(br);
 			br.close();
+
+			this.config.setAttribute("internal.config_avail", "true");
 		} catch (IOException | NoSuchAlgorithmException
 				| KeyManagementException e) {
 			// TODO Auto-generated catch block
@@ -375,15 +341,17 @@ public class Cache {
 	 * 
 	 * @param filename
 	 *            the name of the file which contains the configuration
+	 * @throws CacheException
 	 */
-	public void gatherConfiguration(String filename) {
+	public void updateConfig(String filename) throws CacheException {
 		try {
 			BufferedReader br = new BufferedReader(new FileReader(filename));
 			_parseConfig(br);
 			br.close();
+			log.debug("Successfully loaded configuration: " + filename);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.debug("Error loading configuration: " + filename);
+			throw new CacheException("Configuration not found for cache.");
 		}
 	}
 
@@ -391,45 +359,49 @@ public class Cache {
 	 * Updates the configuration and the cache using the network.
 	 * 
 	 * Note: This method is not implemented, yet.
+	 * 
+	 * @throws IOException
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnknownHostException
+	 * @throws KeyManagementException
+	 * @throws CacheException
 	 */
-	public void update() {
-
+	public void update(boolean useNotaryCache) throws KeyManagementException,
+			UnknownHostException, NoSuchAlgorithmException, IOException,
+			CacheException {
+		updateConfig(useNotaryCache);
+		updateCache(useNotaryCache);
 	}
 
-	/**
-	 * Returns the identifier for this cache.
-	 * @return identifier
-	 */
-	public String getIdentifier() {
-		return this.ident;
-	}
-	
 	/*
 	 * --------------------------------------------------------------------------
-	 * ------------------------------------------------------------------------
 	 * 
 	 * PRIVATE METHODS
 	 * 
 	 * --------------------------------------------------------------------------
-	 * ------------------------------------------------------------------------
 	 */
 
-	private void _parseCache(String notaryCacheId, String fullCache) {
-		this.config = new Configuration(notaryCacheId);
-		this.cache = new InMemoryCache(notaryCacheId);
+	/**
+	 * Parses the complete cache and sets both the configuration parameters as
+	 * well as creates the cache
+	 * 
+	 * @param notaryCacheId
+	 * @param fullCache
+	 */
+	private void _parseCache(String fullCache) throws CacheException {
 
-		this.config.config.clear();
-		this.cache.clear();
+		this.config = new Configuration();
+		this.cache = new InMemoryCache();
 
-		String[] cache = fullCache.split("\\r?\\n");
-		log.debug("Cache has "+cache.length+" lines.");
+		String[] cache = fullCache.split("\\n");
+		log.debug("Cache has " + cache.length + " lines.");
 
 		sCache = new StringBuilder();
 		for (int i = 0; i < cache.length; i++) {
 			if (i == 0) { // Header
 
 				log.debug("_parseCache: Parsing cache header... ");
-				
+
 				_parseCacheHeader(cache[i]);
 				sCache.append(cache[i] + "\n");
 
@@ -440,25 +412,34 @@ public class Cache {
 
 			} else {
 
-				//log.debug("_parseCache: Adding entry...");
-				
+				// log.debug("_parseCache: Adding entry...");
+
 				try {
 					this.cache.addEntry(DefaultEntry.fromString(cache[i]));
 					sCache.append(cache[i] + "\n");
 				} catch (NoSuchAlgorithmException | UnknownHostException e) {
 					e.printStackTrace();
-					log.debug("Failed to add entry: "+e);
+					log.debug("Failed to add entry: " + e);
+					throw new CacheException(
+							"At least one entry is not correct.");
 				}
 
 			}
 		}
 	}
 
-	private void _parseCacheHeader(String header) {
+	/**
+	 * parses the first line of a cache and sets the configuration
+	 * 
+	 * @param header
+	 * @throws CacheException
+	 */
+	private void _parseCacheHeader(String header) throws CacheException {
+
 		String[] params = header.split(";");
 		if (params.length != 7) {
-			log.debug("Header is not correct. Length is "+params.length);
-			return;
+			log.debug("Header is not correct. Length is " + params.length);
+			throw new CacheException("Header is not correct.");
 		}
 
 		this.config.setAttribute("header.ip", params[0]);
@@ -470,10 +451,27 @@ public class Cache {
 		this.config.setAttribute("crypto.signalgo", params[6]);
 	}
 
-	private void _parseCacheSignature(String footer) {
-		this.signature = Base64.getDecoder().decode(footer);
+	/**
+	 * Decodes the signature
+	 * 
+	 * @param footer
+	 * @throws CacheException
+	 */
+	private void _parseCacheSignature(String footer) throws CacheException {
+		try {
+			this.signature = Base64.getDecoder().decode(footer);
+		} catch (IllegalArgumentException e) {
+			log.debug("Signature is not correctly decoded.");
+			throw new CacheException("Signature is not correctly decoded.");
+		}
 	}
 
+	/**
+	 * Parses the configuration.
+	 * 
+	 * @param br
+	 * @throws IOException
+	 */
 	private void _parseConfig(BufferedReader br) throws IOException {
 		String line;
 		String[] var;
@@ -482,5 +480,92 @@ public class Cache {
 			this.config.setAttribute("config." + var[0],
 					(var.length == 2) ? var[1] : "");
 		}
+	}
+
+	/**
+	 * Gathers a cache via TLS connection
+	 * 
+	 * @param useNotaryCache
+	 * @throws UnknownHostException
+	 * @throws NoSuchAlgorithmException
+	 * @throws KeyManagementException
+	 * @throws IOException
+	 * @throws CacheException
+	 */
+	private void updateCache(boolean useNotaryCache)
+			throws UnknownHostException, NoSuchAlgorithmException,
+			KeyManagementException, IOException, CacheException {
+
+		InetAddress host = InetAddress.getByName(this.config
+				.getAttribute("header.ip"));
+		host = InetAddress.getByAddress(
+				this.config.getAttribute("header.hostname"), host.getAddress());
+		int port = Integer.parseInt(this.config.getAttribute("header.port"));
+		boolean replicate = false;
+		String replicatesAttr = this.config
+				.getAttribute("config.replicates.uri");
+		if (!replicatesAttr.equals("")) {
+			float r = Float.parseFloat(this.config
+					.getAttribute("config.replicates.probability")) * 10;
+			Random rand = new Random();
+			if (r < rand.nextInt(100)) {
+				String[] replicates = replicatesAttr.split(",");
+				int idx = rand.nextInt(replicates.length);
+				if (replicates[idx].contains(":")) {
+					host = InetAddress.getByName(replicates[idx].split(":")[0]);
+					port = Integer.parseInt(replicates[idx].split(":")[1]);
+				} else {
+					host = InetAddress.getByName(replicates[idx]);
+					port = 80;
+				}
+				replicate = true;
+			}
+		}
+
+		// Get cache from host
+		SSLSocket socket = null;
+
+		final SSLContext sslContext = SSLContext.getInstance("TLS");
+		if (useNotaryCache) {
+			NCClient client = NCClient.getInstance();
+			X509TrustManager cacheTrustManager = client.getX509TrustManager();
+			((NCTrustManager) cacheTrustManager).update(host.getAddress(),
+					port, host.getHostName());
+
+			sslContext.init(null, new TrustManager[] { cacheTrustManager },
+					SecureRandom.getInstanceStrong());
+		} else {
+			sslContext.init(null, null, SecureRandom.getInstanceStrong());
+		}
+		socket = (SSLSocket) sslContext.getSocketFactory().createSocket(host,
+				port);
+		SSLParameters p = new SSLParameters();
+		ArrayList<SNIServerName> hostnames = new ArrayList<SNIServerName>();
+		hostnames.add(new SNIHostName(host.getHostAddress()));
+		p.setServerNames(hostnames);
+		socket.setSSLParameters(p);
+		socket.startHandshake();
+		PrintWriter pw = new PrintWriter(socket.getOutputStream());
+		if (replicate) {
+			String origIP = this.config.getAttribute("header.ip");
+			String origPort = this.config.getAttribute("header.port");
+			pw.println("GET /.well-known/notary-cache-replicate/" + origIP
+					+ "/" + origPort + " HTTP/1.1");
+		} else {
+			pw.println("GET /.well-known/notary-cache HTTP/1.1");
+		}
+		pw.println("Host: " + host.getHostName());
+		pw.println("");
+		pw.flush();
+		BufferedReader br = new BufferedReader(new InputStreamReader(
+				socket.getInputStream()));
+		String recv;
+		StringBuffer sb = new StringBuffer();
+		while ((recv = br.readLine()) != null)
+			sb.append(recv);
+		br.close();
+
+		// Create cache
+		_parseCache(sb.toString());
 	}
 }

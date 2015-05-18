@@ -4,16 +4,17 @@ import java.io.IOException;
 import java.util.Collection;
 
 import de.donotconnect.notary_cache.client.Cache;
+import de.donotconnect.notary_cache.client.CacheException;
 import de.donotconnect.notary_cache.client.CacheStructures.DefaultEntry;
 import de.donotconnect.notary_cache.client.CacheStructures.ICache;
 
 public class Metrics {
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, CacheException {
 
 		System.out.println(System.getProperty("user.dir"));
 		
-		Cache c1 = Cache.fromFile("example", "example-cache.txt");
+		Cache c1 = Cache.fromFile("example-cache.txt");
 		ICache ca1 = c1.getCache();
 		Collection<DefaultEntry> co1 = ca1.getCollection();
 

@@ -19,9 +19,7 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
-import de.donotconnect.notary_cache.client.NCClient.TargetHost;
-
-public class SimpleClient {
+public class EasyClient {
 	public static void main(String[] args) throws NoSuchAlgorithmException,
 			KeyManagementException, UnknownHostException, IOException {
 
@@ -33,7 +31,7 @@ public class SimpleClient {
 		// ----------------------------------------------------------------------
 		// Notary Cache
 		// ----------------------------------------------------------------------
-		
+
 		// Initialize NotaryCache
 		NCClient ncclient = NCClient.getInstance();
 		// ---- Configure NotaryCache
@@ -41,14 +39,16 @@ public class SimpleClient {
 		caches.add("localhost");
 		ncclient.updateClient(caches);
 		// ---- Create X509TrustManager
-		TargetHost t = ncclient.createTargetHost(InetAddress.getByName(ip)
-				.getAddress(), port, hostname);
-		X509TrustManager cacheTrustManager = ncclient.getX509TrustManager(t);
+		NCTrustManager cacheTrustManager = (NCTrustManager)ncclient.getX509TrustManager();
 
 		// ----------------------------------------------------------------------
 		// Browser Simulation
 		// ----------------------------------------------------------------------
 		
+		// Set connection information for TrustManager
+		cacheTrustManager.update(InetAddress.getByName(ip)
+				.getAddress(), port, hostname);
+
 		// Create SSL Connection
 		final SSLContext sslContext = SSLContext.getInstance("TLS");
 		// ---- Set X509TrustManager

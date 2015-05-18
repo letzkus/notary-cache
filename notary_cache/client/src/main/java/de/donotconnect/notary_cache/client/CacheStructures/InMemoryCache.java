@@ -1,6 +1,5 @@
 package de.donotconnect.notary_cache.client.CacheStructures;
 
-import java.io.File;
 import java.util.Collection;
 
 import org.mapdb.DB;
@@ -12,8 +11,8 @@ public class InMemoryCache implements ICache {
 	DB db;
 	HTreeMap<String, DefaultEntry> cache;
 	
-	public InMemoryCache(String notarycache) {
-		this.open(notarycache);
+	public InMemoryCache() {
+		this.open();
 	}
 
 	public InMemoryCache(DB db, HTreeMap<String, DefaultEntry> c) {
@@ -67,8 +66,8 @@ public class InMemoryCache implements ICache {
 	}
 
 	@Override
-	public void open(String notarycache) {
-		this.db = DBMaker.newFileDB(new File(notarycache+"-cache.db")).make();
+	public void open() {
+		this.db = DBMaker.newMemoryDB().make();
 		this.cache = db.createHashMap("cachestruct").makeOrGet();
 	}
 	

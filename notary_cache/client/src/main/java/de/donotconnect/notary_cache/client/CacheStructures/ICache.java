@@ -12,7 +12,7 @@ public interface ICache {
 	public int size();
 	public void commit();
 	public void close();
-	public void open(String notarycache);
+	public void open();
 	public void clear();
 
 }
