@@ -23,7 +23,9 @@ public class MonteCarloSimulation {
 		double tlsHosts = 1; // Fraction of hosts which are capable of TLS
 		double zipfExponent = 0.7; // Exponent for the Zipf Distribution
 		double averageEntrySize = 204; // Average size of an entry
-		int outputMode = 4; // 0->debug, 1->entries, 2->benefits,
+		double averageTrafficPerRequest = 3700; // Average traffic generated per
+												// request
+		int outputMode = 5; // 0->debug, 1->entries, 2->benefits,
 							// 3->1+2, 4->remainingRequests*averageSize
 
 		// Time Measurements for each step
@@ -100,11 +102,21 @@ public class MonteCarloSimulation {
 								+ "\t"
 								+ ((double) savedRequests / ((double) (remainingRequests + savedRequests))));
 			if (outputMode == 4)
-				System.out.println(users + "\t"
-						//+ (remainingRequests * averageEntrySize) / 1024 / 1024
-						//+ "\t" + (savedRequests * averageEntrySize) / 1024
-						/// 1024 +
-						+ "\t" + (foundHosts.size()*averageEntrySize)/1024/1024);
+				System.out.println(users
+						+ "\t"
+						// + "\t" + (remainingRequests *
+						// averageTrafficPerRequest) / 1024 / 1024)
+						// + "\t" + (savedRequests * averageTrafficPerRequest) /
+						// 1024 / 1024)
+						+ "\t" + (foundHosts.size() * averageEntrySize * users)
+						/ 1024 / 1024);
+			if (outputMode == 5)
+				System.out
+						.println(users
+								+ "\t"
+								+ "\t"
+								+ (((remainingRequests * averageTrafficPerRequest) / 1024 / 1024) + (foundHosts
+										.size() * averageEntrySize * users) / 1024 / 1024));
 		}
 
 	}
@@ -127,6 +139,23 @@ public class MonteCarloSimulation {
 		while (it.hasNext()) {
 			Entry<Long, Long> e = it.next();
 			if (e.getValue() < users) {
+				dismissedHosts.put(e.getKey(), e.getValue());
+			} else {
+				foundHosts.put(e.getKey(), e.getValue());
+			}
+		}
+	}
+
+	@SuppressWarnings("unused")
+	private static void _filterZipf(HashMap<Long, Long> res, long users,
+			double zipf, HashMap<Long, Long> foundHosts,
+			HashMap<Long, Long> dismissedHosts) {
+
+		Iterator<Entry<Long, Long>> it = res.entrySet().iterator();
+
+		while (it.hasNext()) {
+			Entry<Long, Long> e = it.next();
+			if (e.getValue() < Math.pow(users, zipf)) {
 				dismissedHosts.put(e.getKey(), e.getValue());
 			} else {
 				foundHosts.put(e.getKey(), e.getValue());

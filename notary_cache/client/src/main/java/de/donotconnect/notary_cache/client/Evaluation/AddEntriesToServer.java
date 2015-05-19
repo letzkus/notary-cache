@@ -79,7 +79,7 @@ public class AddEntriesToServer {
 
 		InputStream in = alexaZIP.getInputStream(alexaCSV);
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
-		int internalLimit = 650;
+		int internalLimit = 1;
 		int internalStart = 0;
 
 		String line, host;
@@ -117,7 +117,7 @@ public class AddEntriesToServer {
 				}
 			}
 			if (ip != null) {
-				System.out.print(i + " - Adding host " + host + ".....");
+				System.out.print(i + " - Adding host " + host + "/"+ip+".....");
 				ContentResponse resp = httpClient
 						.GET("http://z.donotconnect.de/.well-known/notary?hostname="
 								+ host + "&ip=" + ip);
